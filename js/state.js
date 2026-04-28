@@ -1,0 +1,573 @@
+// ==================== state.js - 应用状态管理 ====================
+// 百事通 v1.0 - 面向普通用户的职业探索应用
+
+export const STORAGE_PREFIX = 'byt_';
+
+// 默认状态
+const defaultState = {
+    theme: 'dark',            // 'dark' | 'light'
+    deviceMode: 'mobile',     // 'mobile' | 'desktop'
+    currentModel: 'gpt-4o-mini', // 当前AI模型（Puter.js 免费）
+    favorites: [],            // 收藏的职业ID列表 ['job_001', 'job_002']
+    recentViewed: [],         // 最近浏览的职业 [{id, timestamp}]
+    compareSlots: [],         // 对比槽位 [{id, name, icon}]
+    exploredJobs: [],         // 已探索的职业ID（序列化为数组存储）
+    stats: {
+        totalExplored: 0,
+        totalStepsCompleted: 0,
+        activeDays: 0,
+        streak: 0,
+        lastActiveDate: null
+    },
+    achievements: {
+        unlocked: []  // 已解锁的成就ID列表
+    }
+};
+
+// 全局应用状态
+export let appState = JSON.parse(JSON.stringify(defaultState));
+
+// ==================== 状态持久化 ====================
+
+/**
+ * 从 localStorage 加载状态
+ * 合并默认值，确保新增字段有默认值
+ */
+export function loadState() {
+    try {
+        const saved = localStorage.getItem(STORAGE_PREFIX + 'state');
+        if (saved) {
+            const parsed = JSON.parse(saved);
+            // 深度合并：保留默认值，覆盖已保存的值
+            appState = {
+                ...defaultState,
+                ...parsed,
+                stats: {
+                    ...defaultState.stats,
+                    ...(parsed.stats || {})
+                },
+                achievements: {
+                    unlocked: (parsed.achievements && parsed.achievements.unlocked) ? parsed.achievements.unlocked : []
+                }
+            };
+        }
+    } catch (e) {
+        console.warn('加载状态失败，使用默认值:', e);
+        appState = JSON.parse(JSON.stringify(defaultState));
+    }
+
+    // 检查是否新的一天，更新连续天数
+    _checkActiveDay();
+}
+
+/**
+ * 保存状态到 localStorage
+ */
+export function saveState() {
+    try {
+        localStorage.setItem(STORAGE_PREFIX + 'state', JSON.stringify(appState));
+    } catch (e) {
+        console.warn('保存状态失败:', e);
+    }
+}
+
+// ==================== 统计管理 ====================
+
+/**
+ * 更新统计字段
+ * @param {string} key - stats 中的字段名
+ * @param {*} value - 新值
+ */
+export function updateStat(key, value) {
+    if (key in appState.stats) {
+        appState.stats[key] = value;
+        saveState();
+    }
+}
+
+/**
+ * 记录今日活跃，更新连续天数
+ * @private
+ */
+function _checkActiveDay() {
+    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+    const lastDate = appState.stats.lastActiveDate;
+
+    if (lastDate === today) {
+        // 今天已经活跃过，无需更新
+        return;
+    }
+
+    const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+
+    if (lastDate === yesterday) {
+        // 昨天活跃过，连续天数 +1
+        appState.stats.streak += 1;
+    } else if (lastDate !== today) {
+        // 断了连续，重置为1
+        appState.stats.streak = 1;
+    }
+
+    appState.stats.activeDays += 1;
+    appState.stats.lastActiveDate = today;
+    saveState();
+}
+
+/**
+ * 增加探索计数
+ */
+export function incrementExplored() {
+    appState.stats.totalExplored += 1;
+    saveState();
+}
+
+/**
+ * 增加步骤完成计数
+ */
+export function incrementStepsCompleted() {
+    appState.stats.totalStepsCompleted += 1;
+    saveState();
+}
+
+// ==================== 最近浏览 ====================
+
+/**
+ * 添加最近浏览记录
+ * @param {string} jobId - 职业 ID
+ */
+export function addRecentView(jobId) {
+    if (!jobId) return;
+
+    // 移除已有的相同记录
+    appState.recentViewed = appState.recentViewed.filter(item => item.id !== jobId);
+
+    // 添加到最前面
+    appState.recentViewed.unshift({
+        id: jobId,
+        timestamp: Date.now()
+    });
+
+    // 最多保留 30 条
+    if (appState.recentViewed.length > 30) {
+        appState.recentViewed = appState.recentViewed.slice(0, 30);
+    }
+
+    saveState();
+}
+
+/**
+ * 获取最近浏览列表
+ * @param {number} [limit=10] - 返回数量
+ * @returns {Array} 最近浏览的职业记录
+ */
+export function getRecentViewed(limit) {
+    limit = limit || 10;
+    return appState.recentViewed.slice(0, limit);
+}
+
+/**
+ * 清空最近浏览
+ */
+export function clearRecentViewed() {
+    appState.recentViewed = [];
+    saveState();
+}
+
+// ==================== 收藏管理 ====================
+
+/**
+ * 切换收藏状态
+ * @param {string} jobId - 职业 ID
+ * @returns {boolean} 切换后的收藏状态（true=已收藏）
+ */
+export function toggleFavorite(jobId) {
+    if (!jobId) return false;
+
+    const index = appState.favorites.indexOf(jobId);
+    if (index === -1) {
+        appState.favorites.push(jobId);
+        saveState();
+        return true;
+    } else {
+        appState.favorites.splice(index, 1);
+        saveState();
+        return false;
+    }
+}
+
+/**
+ * 检查是否已收藏
+ * @param {string} jobId - 职业 ID
+ * @returns {boolean}
+ */
+export function isFavorite(jobId) {
+    return appState.favorites.indexOf(jobId) !== -1;
+}
+
+/**
+ * 获取所有收藏的职业 ID
+ * @returns {Array<string>}
+ */
+export function getFavorites() {
+    return appState.favorites.slice();
+}
+
+/**
+ * 清空所有收藏
+ */
+export function clearFavorites() {
+    appState.favorites = [];
+    saveState();
+}
+
+// ==================== 已探索职业 ====================
+
+/**
+ * 标记职业为已探索
+ * @param {string} jobId - 职业 ID
+ */
+export function markExplored(jobId) {
+    if (!jobId) return;
+    if (appState.exploredJobs.indexOf(jobId) === -1) {
+        appState.exploredJobs.push(jobId);
+        saveState();
+    }
+}
+
+/**
+ * 检查职业是否已探索
+ * @param {string} jobId - 职业 ID
+ * @returns {boolean}
+ */
+export function isExplored(jobId) {
+    return appState.exploredJobs.indexOf(jobId) !== -1;
+}
+
+/**
+ * 获取已探索职业数量
+ * @returns {number}
+ */
+export function getExploredCount() {
+    return appState.exploredJobs.length;
+}
+
+// ==================== 对比槽位管理 ====================
+
+/**
+ * 添加到对比槽位
+ * @param {string} id - 职业 ID
+ * @param {string} name - 职业名称
+ * @param {string} icon - 职业图标（emoji）
+ * @returns {boolean} 是否添加成功
+ */
+export function addToCompare(id, name, icon) {
+    if (!id) return false;
+
+    // 最多对比 3 个
+    if (appState.compareSlots.length >= 3) {
+        return false;
+    }
+
+    // 检查是否已在对比中
+    if (appState.compareSlots.some(function(slot) { return slot.id === id; })) {
+        return false;
+    }
+
+    appState.compareSlots.push({ id: id, name: name, icon: icon });
+    saveState();
+    return true;
+}
+
+/**
+ * 从对比槽位移除
+ * @param {string} jobId - 职业 ID
+ */
+export function removeFromCompare(jobId) {
+    appState.compareSlots = appState.compareSlots.filter(function(slot) {
+        return slot.id !== jobId;
+    });
+    saveState();
+}
+
+/**
+ * 清空对比槽位
+ */
+export function clearCompare() {
+    appState.compareSlots = [];
+    saveState();
+}
+
+/**
+ * 获取对比槽位
+ * @returns {Array}
+ */
+export function getCompareSlots() {
+    return appState.compareSlots.slice();
+}
+
+/**
+ * 检查是否在对比中
+ * @param {string} jobId
+ * @returns {boolean}
+ */
+export function isInCompare(jobId) {
+    return appState.compareSlots.some(function(slot) { return slot.id === jobId; });
+}
+
+// ==================== 主题管理 ====================
+
+/**
+ * 获取当前主题
+ * @returns {string} 'dark' | 'light'
+ */
+export function getTheme() {
+    return appState.theme;
+}
+
+/**
+ * 设置主题
+ * @param {string} theme - 'dark' | 'light'
+ */
+export function setTheme(theme) {
+    if (theme !== 'dark' && theme !== 'light') return;
+    appState.theme = theme;
+    saveState();
+}
+
+// ==================== API Key 管理 ====================
+
+/**
+ * 获取指定模型的 API Key
+ * @param {string} modelId - 模型标识
+ * @returns {string|null}
+ */
+export function getApiKey(modelId) {
+    try {
+        return localStorage.getItem(STORAGE_PREFIX + 'apikey_' + modelId) || null;
+    } catch (e) {
+        return null;
+    }
+}
+
+/**
+ * 设置指定模型的 API Key
+ * @param {string} modelId - 模型标识
+ * @param {string} key - API Key
+ */
+export function setApiKey(modelId, key) {
+    try {
+        if (key) {
+            localStorage.setItem(STORAGE_PREFIX + 'apikey_' + modelId, key);
+        } else {
+            localStorage.removeItem(STORAGE_PREFIX + 'apikey_' + modelId);
+        }
+    } catch (e) {
+        console.warn('保存 API Key 失败:', e);
+    }
+}
+
+// ==================== AI 模型管理 ====================
+
+/**
+ * 获取当前 AI 模型
+ * @returns {string}
+ */
+export function getCurrentModel() {
+    return appState.currentModel;
+}
+
+/**
+ * 设置当前 AI 模型
+ * @param {string} modelId
+ */
+export function setCurrentModel(modelId) {
+    appState.currentModel = modelId;
+    saveState();
+}
+
+// ==================== 设备模式管理 ====================
+
+/**
+ * 获取当前设备模式
+ * @returns {string} 'mobile' | 'desktop'
+ */
+export function getDeviceMode() {
+    // 如果用户已手动选择过模式，使用用户选择
+    if (appState.deviceMode) return appState.deviceMode;
+    // 自动检测：屏幕宽度 >= 768px 使用桌面模式
+    if (window.innerWidth >= 768) return 'desktop';
+    return 'mobile';
+}
+
+/**
+ * 设置设备模式
+ * @param {string} mode - 'mobile' | 'desktop'
+ */
+export function setDeviceMode(mode) {
+    if (mode !== 'mobile' && mode !== 'desktop') return;
+    appState.deviceMode = mode;
+    saveState();
+}
+
+// ==================== 重置状态 ====================
+
+/**
+ * 重置所有状态到默认值
+ */
+export function resetState() {
+    appState = JSON.parse(JSON.stringify(defaultState));
+    saveState();
+}
+
+// ==================== 成就管理 ====================
+
+/**
+ * 获取已解锁的成就ID列表
+ * @returns {Array<string>}
+ */
+export function getUnlockedAchievements() {
+    return (appState.achievements && appState.achievements.unlocked) ? appState.achievements.unlocked.slice() : [];
+}
+
+/**
+ * 检查成就是否已解锁
+ * @param {string} id - 成就ID
+ * @returns {boolean}
+ */
+export function isAchievementUnlocked(id) {
+    const unlocked = getUnlockedAchievements();
+    return unlocked.indexOf(id) !== -1;
+}
+
+/**
+ * 解锁成就
+ * @param {string} id - 成就ID
+ */
+export function unlockAchievement(id) {
+    if (!id) return;
+    if (!appState.achievements) {
+        appState.achievements = { unlocked: [] };
+    }
+    if (appState.achievements.unlocked.indexOf(id) !== -1) return;
+
+    appState.achievements.unlocked.push(id);
+    saveState();
+
+    // 查找成就名称
+    const achievements = window.ACHIEVEMENTS || [];
+    let achName = '';
+    for (let i = 0; i < achievements.length; i++) {
+        if (achievements[i].id === id) {
+            achName = achievements[i].name || id;
+            break;
+        }
+    }
+
+    // 延迟引用 showToast，避免与 ui.js 的循环依赖
+    if (typeof window.showToast === 'function') {
+        window.showToast('🏆 成就解锁：' + achName, 'success', 4000);
+    }
+}
+
+/**
+ * 检查并解锁成就（条件满足时自动解锁）
+ * @param {string} id - 成就ID
+ */
+export function checkAchievement(id) {
+    if (!id || isAchievementUnlocked(id)) return;
+
+    let shouldUnlock = false;
+
+    switch (id) {
+        case 'first_task':
+            // 第一次查看职业详情
+            shouldUnlock = (appState.exploredJobs && appState.exploredJobs.length >= 1);
+            break;
+        case 'five_tasks':
+            // 探索5个不同职业
+            shouldUnlock = (appState.exploredJobs && appState.exploredJobs.length >= 5);
+            break;
+        case 'ten_tasks':
+            // 探索10个不同职业
+            shouldUnlock = (appState.exploredJobs && appState.exploredJobs.length >= 10);
+            break;
+        case 'twenty_tasks':
+            // 探索20个不同职业
+            shouldUnlock = (appState.exploredJobs && appState.exploredJobs.length >= 20);
+            break;
+        case 'first_star':
+            // 第一次收藏
+            shouldUnlock = (appState.favorites && appState.favorites.length >= 1);
+            break;
+        case 'ten_stars':
+            // 收藏10个
+            shouldUnlock = (appState.favorites && appState.favorites.length >= 10);
+            break;
+        case 'streak_3':
+            // 连续3天
+            shouldUnlock = (appState.stats && appState.stats.streak >= 3);
+            break;
+        case 'streak_7':
+            // 连续7天
+            shouldUnlock = (appState.stats && appState.stats.streak >= 7);
+            break;
+        case 'streak_30':
+            // 连续30天
+            shouldUnlock = (appState.stats && appState.stats.streak >= 30);
+            break;
+        case 'all_jobs':
+            // 尝试过所有岗位（探索数 >= 50 作为近似条件）
+            shouldUnlock = (appState.exploredJobs && appState.exploredJobs.length >= 50);
+            break;
+        case 'emotion_green':
+            // 记录5次"我很好"（用活跃天数近似）
+            shouldUnlock = (appState.stats && appState.stats.activeDays >= 5);
+            break;
+        case 'custom_job':
+            // 创建自定义任务（用AI提问次数近似）
+            shouldUnlock = (appState.stats && appState.stats.totalExplored >= 1);
+            break;
+        default:
+            break;
+    }
+
+    if (shouldUnlock) {
+        unlockAchievement(id);
+    }
+}
+
+// ==================== 保留全局导出 ====================
+window.appState = appState;
+window.loadState = loadState;
+window.saveState = saveState;
+window.updateStat = updateStat;
+window.incrementExplored = incrementExplored;
+window.incrementStepsCompleted = incrementStepsCompleted;
+window.addRecentView = addRecentView;
+window.getRecentViewed = getRecentViewed;
+window.clearRecentViewed = clearRecentViewed;
+window.toggleFavorite = toggleFavorite;
+window.isFavorite = isFavorite;
+window.getFavorites = getFavorites;
+window.clearFavorites = clearFavorites;
+window.markExplored = markExplored;
+window.isExplored = isExplored;
+window.getExploredCount = getExploredCount;
+window.addToCompare = addToCompare;
+window.removeFromCompare = removeFromCompare;
+window.clearCompare = clearCompare;
+window.getCompareSlots = getCompareSlots;
+window.isInCompare = isInCompare;
+window.getTheme = getTheme;
+window.setTheme = setTheme;
+window.getDeviceMode = getDeviceMode;
+window.setDeviceMode = setDeviceMode;
+window.getApiKey = getApiKey;
+window.setApiKey = setApiKey;
+window.getCurrentModel = getCurrentModel;
+window.setCurrentModel = setCurrentModel;
+window.resetState = resetState;
+window.getUnlockedAchievements = getUnlockedAchievements;
+window.isAchievementUnlocked = isAchievementUnlocked;
+window.unlockAchievement = unlockAchievement;
+window.checkAchievement = checkAchievement;
