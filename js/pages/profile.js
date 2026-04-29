@@ -585,7 +585,7 @@ function showSupportModal() {
 
     // 微信收款码图片
     const qrImg = document.createElement('img');
-    qrImg.src = './wechat-pay.png';
+    qrImg.src = '/baishitong/wechat-pay.png';
     qrImg.alt = '微信收款码';
     qrImg.style.cssText = 'width:200px;height:200px;border-radius:var(--radius-lg);object-fit:cover;box-shadow:var(--shadow-md);';
     qrWrap.appendChild(qrImg);
