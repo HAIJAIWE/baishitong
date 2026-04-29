@@ -1,0 +1,27 @@
+{
+  "name": "baishitong",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "sw.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "dev": "vite --host 0.0.0.0 --port 5173",
+    "lint": "eslint js/",
+    "build": "vite build",
+    "preview": "vite preview --host 0.0.0.0 --port 4173"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "eslint": "^10.2.1",
+    "terser": "^5.46.2",
+    "vite": "^8.0.10"
+  },
+  "dependencies": {
+    "leancloud-storage": "^4.15.2",
+    "lucide": "^1.12.0"
+  }
+}
