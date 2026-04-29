@@ -5,6 +5,7 @@
 
 /* === 应用容器 === */
 #app {
+    width: 100%;
     max-width: var(--app-max-width);
     margin: 0 auto;
     min-height: 100vh;
@@ -12,6 +13,7 @@
     position: relative;
     background: var(--bg-primary);
     transition: var(--theme-transition);
+    overflow-x: hidden;
 }
 
 /* === 页面系统 === */
@@ -20,6 +22,7 @@
     padding: var(--space-4);
     padding-bottom: calc(var(--bottom-nav-height) + var(--safe-area-bottom) + var(--space-4));
     animation: pageIn var(--duration-normal) var(--ease-out);
+    overflow-x: hidden;
 }
 
 .page.active {
