@@ -160,20 +160,6 @@ function setupDisclaimer() {
 
     if (!overlay || !checkbox || !btn) return;
 
-    // 替换免责声明页面的 emoji 为 SVG 图标
-    var logoEl = overlay.querySelector('.disclaimer-logo');
-    if (logoEl) { logoEl.textContent = ''; logoEl.appendChild(icon('briefcase', 40, 'var(--accent)')); }
-
-    var disclaimerIcons = overlay.querySelectorAll('.disclaimer-icon');
-    var iconMap = ['clipboardList', 'bot', 'alertTriangle', 'shield'];
-    disclaimerIcons.forEach(function(el, i) {
-        if (iconMap[i]) { el.textContent = ''; el.appendChild(icon(iconMap[i], 20, 'var(--accent)')); }
-    });
-
-    var modeIcons = overlay.querySelectorAll('.mode-select-icon');
-    if (modeIcons[0]) { modeIcons[0].textContent = ''; modeIcons[0].appendChild(icon('smartphone', 24, 'var(--accent)')); }
-    if (modeIcons[1]) { modeIcons[1].textContent = ''; modeIcons[1].appendChild(icon('monitor', 24, 'var(--accent)')); }
-
     // 隐藏主应用
     if (appContainer) appContainer.style.display = 'none';
 
