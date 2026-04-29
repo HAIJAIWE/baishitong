@@ -64,7 +64,7 @@ function createProfileHeader() {
     editIcon.appendChild(icon('pencil', 14, 'var(--text-tertiary)'));
     nameRow.appendChild(name);
     nameRow.appendChild(editIcon);
-    nameRow.style.cssText = 'display:flex;align-items:center;gap:6px;cursor:pointer;';
+    nameRow.style.cssText = 'display:flex;align-items:center;justify-content:center;gap:6px;cursor:pointer;';
     nameRow.title = '点击修改昵称';
     nameRow.addEventListener('click', function() {
         const editWrap = document.createElement('div');
@@ -583,18 +583,12 @@ function showSupportModal() {
     qrLabel.textContent = '微信扫码赞助';
     qrWrap.appendChild(qrLabel);
 
-    // 收款码占位
-    const qrPlaceholder = document.createElement('div');
-    qrPlaceholder.style.cssText = 'width:180px;height:180px;border:2px dashed var(--border);border-radius:var(--radius-lg);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px;background:var(--bg-primary);';
-    const qrIcon = document.createElement('span');
-    qrIcon.style.cssText = 'font-size:32px;';
-    qrIcon.textContent = '📱';
-    const qrText = document.createElement('span');
-    qrText.style.cssText = 'font-size:var(--text-xs);color:var(--text-tertiary);';
-    qrText.textContent = '微信收款码';
-    qrPlaceholder.appendChild(qrIcon);
-    qrPlaceholder.appendChild(qrText);
-    qrWrap.appendChild(qrPlaceholder);
+    // 微信收款码图片
+    const qrImg = document.createElement('img');
+    qrImg.src = './wechat-pay.png';
+    qrImg.alt = '微信收款码';
+    qrImg.style.cssText = 'width:200px;height:200px;border-radius:var(--radius-lg);object-fit:cover;box-shadow:var(--shadow-md);';
+    qrWrap.appendChild(qrImg);
 
     // 感谢
     const tip = document.createElement('p');
