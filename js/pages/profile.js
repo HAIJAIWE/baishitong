@@ -433,16 +433,19 @@ function showAboutModal() {
     panel.appendChild(version);
 
     const desc = createEl('div', 'about-desc');
-    desc.textContent = '一款面向普通用户的职业探索应用，涵盖1662个职业数据，AI智能问答，帮助你发现职业方向。';
+    desc.textContent = '一款面向所有人的知识探索应用，涵盖职业百科、生活常识、AI智能问答，帮助你发现职业方向、提升生活技能。';
     panel.appendChild(desc);
 
     const features = createEl('div', 'about-features');
     features.style.cssText = 'font-size:var(--text-sm);color:var(--text-secondary);line-height:2;';
 
     const featureItems = [
-        '涵盖 1662 个职业详细数据',
+        '涵盖 1669 个职业详细数据',
         '8大行业分类，54个中类',
-        'AI 多模型智能问答（DeepSeek/通义千问/智谱GLM）',
+        '800 条生活常识（烹饪/收纳/养生/数码等）',
+        '7个AI智能体（职业顾问/简历/面试/学习规划等）',
+        'AI 多模型支持（DeepSeek/通义千问/智谱GLM/Kimi等）',
+        '职业测评（霍兰德RIASEC）',
         '职业对比分析',
         '学习路径规划',
         '暗色/亮色主题切换'
