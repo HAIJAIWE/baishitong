@@ -206,6 +206,12 @@ function createSettingsList() {
             action: 'achievements'
         },
         {
+            icon: 'coffee',
+            name: '请我喝奶茶',
+            desc: '如果对你有帮助的话 ☕',
+            action: 'support'
+        },
+        {
             icon: 'info',
             name: '关于百事通',
             desc: '版本信息和说明',
@@ -372,6 +378,10 @@ function handleSettingAction(action) {
             navigateTo('page-achievements');
             break;
 
+        case 'support':
+            showSupportModal();
+            break;
+
         case 'about':
             showAboutModal();
             break;
@@ -519,6 +529,69 @@ function showChangePasswordModal() {
     cancelBtn.addEventListener('click', function() {
         hideModal();
     });
+}
+
+// ==================== 请我喝奶茶 ====================
+
+function showSupportModal() {
+    const wrap = document.createElement('div');
+    wrap.style.cssText = 'text-align:center;padding:var(--space-6);';
+
+    // 图标
+    const iconWrap = document.createElement('div');
+    iconWrap.style.cssText = 'font-size:48px;margin-bottom:var(--space-4);';
+    iconWrap.textContent = '🧋';
+    wrap.appendChild(iconWrap);
+
+    // 标题
+    const title = document.createElement('h3');
+    title.style.cssText = 'font-size:var(--text-lg);font-weight:700;color:var(--text-primary);margin:0 0 var(--space-2);';
+    title.textContent = '请我喝一杯奶茶';
+    wrap.appendChild(title);
+
+    // 说明
+    const desc = document.createElement('p');
+    desc.style.cssText = 'font-size:var(--text-sm);color:var(--text-secondary);margin:0 0 var(--space-5);line-height:1.6;';
+    desc.textContent = '如果百事通对你有帮助，可以请我喝一杯奶茶 ☕\n金额随意，心意最重要～';
+    wrap.appendChild(desc);
+
+    // 微信收款码区域
+    const qrWrap = document.createElement('div');
+    qrWrap.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:var(--space-3);margin-bottom:var(--space-5);';
+
+    const qrLabel = document.createElement('span');
+    qrLabel.style.cssText = 'font-size:var(--text-xs);color:var(--text-tertiary);';
+    qrLabel.textContent = '微信扫码赞赏';
+    qrWrap.appendChild(qrLabel);
+
+    // 收款码占位 - 用一个带边框的区域表示
+    const qrPlaceholder = document.createElement('div');
+    qrPlaceholder.style.cssText = 'width:180px;height:180px;border:2px dashed var(--border);border-radius:var(--radius-lg);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px;background:var(--bg-primary);';
+    const qrIcon = document.createElement('span');
+    qrIcon.style.cssText = 'font-size:32px;';
+    qrIcon.textContent = '📱';
+    const qrText = document.createElement('span');
+    qrText.style.cssText = 'font-size:var(--text-xs);color:var(--text-tertiary);';
+    qrText.textContent = '微信收款码';
+    qrPlaceholder.appendChild(qrIcon);
+    qrPlaceholder.appendChild(qrText);
+    qrWrap.appendChild(qrPlaceholder);
+
+    // 提示
+    const tip = document.createElement('p');
+    tip.style.cssText = 'font-size:var(--text-xs);color:var(--text-tertiary);margin:0 0 var(--space-4);';
+    tip.textContent = '你的支持是我持续更新的动力 ❤️';
+    wrap.appendChild(tip);
+
+    // 关闭按钮
+    const closeBtn = document.createElement('button');
+    closeBtn.className = 'btn btn-outline';
+    closeBtn.style.cssText = 'width:100%;';
+    closeBtn.textContent = '好的，下次一定';
+    closeBtn.addEventListener('click', function() { hideModal(); });
+    wrap.appendChild(closeBtn);
+
+    showModal(wrap);
 }
 
 /**
