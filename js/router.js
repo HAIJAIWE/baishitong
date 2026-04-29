@@ -95,6 +95,18 @@ export function navigateTo(pageId) {
 
     // 滚动到顶部
     window.scrollTo(0, 0);
+
+    // 处理从其他页面跳转过来的待填入问题
+    if (window._pendingAiQuestion && pageId === 'page-ai') {
+        setTimeout(function() {
+            var input = document.getElementById('aiChatInput');
+            if (input) {
+                input.value = window._pendingAiQuestion;
+                input.focus();
+            }
+            window._pendingAiQuestion = null;
+        }, 350);
+    }
 }
 
 /**

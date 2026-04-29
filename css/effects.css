@@ -77,13 +77,13 @@
     position: absolute;
     inset: -1px;
     border-radius: inherit;
-    padding: 1px;
+    padding: 1.5px;
     background: conic-gradient(
         from var(--border-angle, 0deg),
         transparent 0%,
-        var(--accent) 10%,
-        var(--accent-hover) 20%,
-        transparent 30%
+        var(--accent) 8%,
+        var(--accent-hover) 16%,
+        transparent 24%
     );
     -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
     -webkit-mask-composite: xor;
@@ -91,13 +91,15 @@
     animation: borderRotate 4s linear infinite;
     pointer-events: none;
     opacity: 0;
-    transition: opacity var(--duration-normal) ease;
+    visibility: hidden;
+    transition: opacity var(--duration-normal) ease, visibility var(--duration-normal) ease;
 }
 
 .recommend-card:hover::after,
 .category-card:hover::after,
 .job-card:hover::after {
     opacity: 1;
+    visibility: visible;
 }
 
 @property --border-angle {
@@ -109,6 +111,15 @@
 @keyframes borderRotate {
     0% { --border-angle: 0deg; }
     100% { --border-angle: 360deg; }
+}
+
+/* 不支持 @property 的浏览器回退：静态渐变边框 */
+@supports not (background: conic-gradient(from 0deg, red, blue)) {
+    .recommend-card::after,
+    .category-card::after,
+    .job-card::after {
+        display: none;
+    }
 }
 
 /* 卡片悬浮效果 */
