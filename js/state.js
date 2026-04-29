@@ -7,6 +7,7 @@ export const STORAGE_PREFIX = 'byt_';
 
 // 默认状态
 const defaultState = {
+    username: '百事通用户',
     theme: 'dark',             // 'dark' | 'light'
     deviceMode: 'mobile',     // 'mobile' | 'desktop'
     currentModel: 'gpt-4o-mini', // 当前AI模型（Puter.js 免费）
@@ -19,7 +20,13 @@ const defaultState = {
         totalStepsCompleted: 0,
         activeDays: 0,
         streak: 0,
-        lastActiveDate: null
+        lastActiveDate: null,
+        aiQueries: 0,
+        plansGenerated: 0,
+        comparisons: 0,
+        tipsViewed: 0,
+        searches: 0,
+        stepsCompleted: 0
     },
     achievements: {
         unlocked: []  // 已解锁的成就ID列表
@@ -346,6 +353,14 @@ export function getTheme() {
 export function setTheme(theme) {
     if (theme !== 'dark' && theme !== 'light') return;
     appState.theme = theme;
+    saveState();
+}
+
+export function setUsername(name) {
+    if (!name || typeof name !== 'string') return;
+    name = name.trim().substring(0, 12);
+    if (name.length === 0) return;
+    appState.username = name;
     saveState();
 }
 
@@ -677,52 +692,88 @@ export function checkAchievement(id) {
 
     switch (id) {
         case 'first_task':
-            // 第一次查看职业详情
             shouldUnlock = (appState.exploredJobs && appState.exploredJobs.length >= 1);
             break;
         case 'five_tasks':
-            // 探索5个不同职业
             shouldUnlock = (appState.exploredJobs && appState.exploredJobs.length >= 5);
             break;
         case 'ten_tasks':
-            // 探索10个不同职业
             shouldUnlock = (appState.exploredJobs && appState.exploredJobs.length >= 10);
             break;
         case 'twenty_tasks':
-            // 探索20个不同职业
             shouldUnlock = (appState.exploredJobs && appState.exploredJobs.length >= 20);
             break;
+        case 'fifty_tasks':
+            shouldUnlock = (appState.exploredJobs && appState.exploredJobs.length >= 50);
+            break;
+        case 'hundred_tasks':
+            shouldUnlock = (appState.exploredJobs && appState.exploredJobs.length >= 100);
+            break;
         case 'first_star':
-            // 第一次收藏
             shouldUnlock = (appState.favorites && appState.favorites.length >= 1);
             break;
+        case 'five_stars':
+            shouldUnlock = (appState.favorites && appState.favorites.length >= 5);
+            break;
         case 'ten_stars':
-            // 收藏10个
             shouldUnlock = (appState.favorites && appState.favorites.length >= 10);
             break;
         case 'streak_3':
-            // 连续3天
             shouldUnlock = (appState.stats && appState.stats.streak >= 3);
             break;
         case 'streak_7':
-            // 连续7天
             shouldUnlock = (appState.stats && appState.stats.streak >= 7);
             break;
+        case 'streak_14':
+            shouldUnlock = (appState.stats && appState.stats.streak >= 14);
+            break;
         case 'streak_30':
-            // 连续30天
             shouldUnlock = (appState.stats && appState.stats.streak >= 30);
             break;
-        case 'all_jobs':
-            // 尝试过所有岗位（探索数 >= 50 作为近似条件）
-            shouldUnlock = (appState.exploredJobs && appState.exploredJobs.length >= 50);
+        case 'streak_60':
+            shouldUnlock = (appState.stats && appState.stats.streak >= 60);
             break;
-        case 'emotion_green':
-            // 记录5次"我很好"（用活跃天数近似）
+        case 'active_5':
             shouldUnlock = (appState.stats && appState.stats.activeDays >= 5);
             break;
-        case 'custom_job':
-            // 创建自定义任务（用AI提问次数近似）
-            shouldUnlock = (appState.stats && appState.stats.totalExplored >= 1);
+        case 'active_15':
+            shouldUnlock = (appState.stats && appState.stats.activeDays >= 15);
+            break;
+        case 'active_30':
+            shouldUnlock = (appState.stats && appState.stats.activeDays >= 30);
+            break;
+        case 'first_ai':
+            shouldUnlock = (appState.stats && appState.stats.aiQueries >= 1);
+            break;
+        case 'ai_five':
+            shouldUnlock = (appState.stats && appState.stats.aiQueries >= 5);
+            break;
+        case 'ai_twenty':
+            shouldUnlock = (appState.stats && appState.stats.aiQueries >= 20);
+            break;
+        case 'first_plan':
+            shouldUnlock = (appState.stats && appState.stats.plansGenerated >= 1);
+            break;
+        case 'first_compare':
+            shouldUnlock = (appState.stats && appState.stats.comparisons >= 1);
+            break;
+        case 'first_tip':
+            shouldUnlock = (appState.stats && appState.stats.tipsViewed >= 1);
+            break;
+        case 'tips_ten':
+            shouldUnlock = (appState.stats && appState.stats.tipsViewed >= 10);
+            break;
+        case 'first_search':
+            shouldUnlock = (appState.stats && appState.stats.searches >= 1);
+            break;
+        case 'first_step':
+            shouldUnlock = (appState.stats && appState.stats.stepsCompleted >= 1);
+            break;
+        case 'steps_ten':
+            shouldUnlock = (appState.stats && appState.stats.stepsCompleted >= 10);
+            break;
+        case 'steps_fifty':
+            shouldUnlock = (appState.stats && appState.stats.stepsCompleted >= 50);
             break;
         default:
             break;

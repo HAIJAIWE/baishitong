@@ -4,7 +4,7 @@
 
 import { clearContainer, createEl, showToast, showConfirm, showModal, hideModal } from '../utils/ui.js';
 import { isSoundEnabled, setSoundEnabled, playClick } from '../utils/sound.js';
-import { appState, getTheme, setTheme, getDeviceMode, setDeviceMode, checkAchievement, resetState } from '../state.js';
+import { appState, getTheme, setTheme, getDeviceMode, setDeviceMode, checkAchievement, resetState, setUsername } from '../state.js';
 import { applyTheme, applyDeviceMode } from '../app.js';
 import { navigateTo, resetPageInit } from '../router.js';
 import { storageClear } from '../utils/storage.js';
@@ -57,14 +57,63 @@ function createProfileHeader() {
     const avatar = createEl('div', 'profile-avatar');
     avatar.appendChild(icon('sun', 24, '#F59E0B'));
 
+    const nameRow = createEl('div', 'profile-name-row');
     const name = createEl('div', 'profile-name');
-    name.textContent = '百事通用户';
+    name.textContent = appState.username || '百事通用户';
+    const editIcon = createEl('span', 'profile-name-edit');
+    editIcon.appendChild(icon('pencil', 14, 'var(--text-tertiary)'));
+    nameRow.appendChild(name);
+    nameRow.appendChild(editIcon);
+    nameRow.style.cssText = 'display:flex;align-items:center;gap:6px;cursor:pointer;';
+    nameRow.title = '点击修改昵称';
+    nameRow.addEventListener('click', function() {
+        const editWrap = document.createElement('div');
+        editWrap.style.cssText = 'padding:var(--space-4);';
+        const editTitle = document.createElement('div');
+        editTitle.style.cssText = 'font-size:var(--text-base);font-weight:var(--font-semibold);margin-bottom:var(--space-3);text-align:center;';
+        editTitle.textContent = '修改昵称';
+        editWrap.appendChild(editTitle);
+        const editInput = document.createElement('input');
+        editInput.type = 'text';
+        editInput.maxLength = 12;
+        editInput.value = appState.username || '百事通用户';
+        editInput.placeholder = '请输入昵称（最多12字）';
+        editInput.style.cssText = 'width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:var(--text-sm);background:var(--bg-secondary);color:var(--text-primary);outline:none;box-sizing:border-box;';
+        editWrap.appendChild(editInput);
+        const editBtnRow = document.createElement('div');
+        editBtnRow.style.cssText = 'display:flex;gap:8px;margin-top:var(--space-3);';
+        const cancelBtn = document.createElement('button');
+        cancelBtn.className = 'btn btn-outline';
+        cancelBtn.style.cssText = 'flex:1;';
+        cancelBtn.textContent = '取消';
+        cancelBtn.addEventListener('click', function() { hideModal(); });
+        const saveBtn = document.createElement('button');
+        saveBtn.className = 'btn btn-primary';
+        saveBtn.style.cssText = 'flex:1;';
+        saveBtn.textContent = '保存';
+        saveBtn.addEventListener('click', function() {
+            const newName = editInput.value.trim();
+            if (newName.length === 0) {
+                showToast('昵称不能为空', 'error');
+                return;
+            }
+            setUsername(newName);
+            name.textContent = newName;
+            hideModal();
+            showToast('昵称已更新', 'success');
+        });
+        editBtnRow.appendChild(cancelBtn);
+        editBtnRow.appendChild(saveBtn);
+        editWrap.appendChild(editBtnRow);
+        showModal(editWrap);
+        setTimeout(function() { editInput.focus(); editInput.select(); }, 100);
+    });
 
     const desc = createEl('div', 'profile-desc');
     desc.textContent = '探索职业，发现未来';
 
     header.appendChild(avatar);
-    header.appendChild(name);
+    header.appendChild(nameRow);
     header.appendChild(desc);
 
     return header;
