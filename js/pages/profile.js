@@ -552,7 +552,7 @@ function showSupportModal() {
     // 说明
     const desc = document.createElement('p');
     desc.style.cssText = 'font-size:var(--text-sm);color:var(--text-secondary);margin:0 0 var(--space-5);line-height:1.6;';
-    desc.textContent = '如果百事通对你有帮助，可以随缘请我喝杯奶茶，就当是小小的创作鼓励。\n金额不分多少，每份都是心意，非常感谢～';
+    desc.textContent = '如果百事通对你有帮助，可以随缘请我喝杯奶茶，就当是小小的创作鼓励。\n金额不分多少，每份都是心意，非常感谢～\n\n百事通有什么缺点或者不完善的地方，欢迎来找我，一起优化一下。';
     wrap.appendChild(desc);
 
     // 资金用途
