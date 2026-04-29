@@ -810,6 +810,34 @@ function _renderJobDetailContent(job, jobId) {
             shareBtn2.textContent = '分享到社区';
             planWrap.appendChild(shareBtn2);
 
+            // 向AI咨询按钮
+            const aiBtn = document.createElement('button');
+            aiBtn.className = 'btn btn-primary';
+            aiBtn.style.cssText = 'width:100%;margin-top:var(--space-2);';
+            aiBtn.textContent = '';
+            aiBtn.appendChild(icon('bot', 16));
+            aiBtn.appendChild(document.createTextNode(' 向AI咨询学习建议'));
+            aiBtn.addEventListener('click', function() {
+                hideModal();
+                const question = '我想学习成为' + job.name + '，目前的学习计划是：' +
+                    targetLevel.steps.map(function(s) { return s.title; }).join('、') +
+                    '。请给我一些学习建议和指导。';
+                // 跳转到AI问答页面并预填问题
+                if (typeof navigateTo === 'function') {
+                    navigateTo('page-ai');
+                }
+                // 等页面加载后填入问题
+                setTimeout(function() {
+                    const input = document.querySelector('#page-ai .chat-input');
+                    if (input) {
+                        input.value = question;
+                        input.dispatchEvent(new Event('input', { bubbles: true }));
+                        input.focus();
+                    }
+                }, 300);
+            });
+            planWrap.appendChild(aiBtn);
+
             showModal(planWrap);
 
             // 绑定事件
