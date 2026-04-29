@@ -948,6 +948,47 @@
     cursor: not-allowed;
 }
 
+/* 联网搜索按钮 */
+.chat-input-area .web-search-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
+    border: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: all var(--duration-fast);
+    cursor: pointer;
+}
+
+.chat-input-area .web-search-btn:hover {
+    background: var(--accent-subtle);
+    color: var(--accent);
+    border-color: var(--accent);
+    box-shadow: 0 0 12px rgba(245, 158, 11, 0.2);
+}
+
+.chat-input-area .web-search-btn:active {
+    transform: scale(0.9);
+}
+
+.chat-input-area .web-search-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.chat-input-area .web-search-btn.searching svg {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
 /* AI设置面板 */
 .ai-settings-panel {
     padding: var(--space-4) 0;

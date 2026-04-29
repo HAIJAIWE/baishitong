@@ -9,6 +9,7 @@ import { isLoggedIn, getCurrentUser, storeApiKey, getStoredApiKey, logout } from
 import { resetPageInit } from '../router.js';
 import { storageGet, storageSet, storageRemove } from '../utils/storage.js';
 import { icon } from '../utils/icons.js';
+import { searchWeb } from '../utils/web-search.js';
 
 // 对话状态
 const _chatState = {
@@ -78,7 +79,7 @@ export function initAiChat() {
 
 window.initAiChat = initAiChat;
 
-export function sendChatMessage(message) {
+export function sendChatMessage(message, searchContext) {
     if (_chatState.isLoading || !message) return;
 
     const chatArea = document.getElementById('aiChatMessages');
@@ -88,16 +89,31 @@ export function sendChatMessage(message) {
     const welcome = document.getElementById('aiWelcome');
     if (welcome) welcome.style.display = 'none';
 
+    // 如果有搜索上下文，在用户消息前显示搜索标签
+    var displayMsg = message;
+    if (searchContext) {
+        displayMsg = '🌐 ' + message;
+    }
+
     // 添加用户消息
     _chatState.messages.push({ role: 'user', content: message });
-    appendUserBubble(chatArea, message);
+    appendUserBubble(chatArea, displayMsg);
 
     // 检查AI提问成就
-    checkAchievement('custom_job');
+    checkAchievement('first_ai');
 
     // 创建 AI 气泡（流式填充）
     _chatState.isLoading = true;
     const aiBubble = createStreamingBubble(chatArea);
+
+    // 如果有搜索上下文，注入到消息历史中
+    var messagesForAI = _chatState.messages.slice();
+    if (searchContext) {
+        messagesForAI = [
+            { role: 'system', content: '你是一个联网搜索助手。以下是用户查询的联网搜索结果，请基于这些搜索结果回答用户问题。如果搜索结果不足以回答，可以结合你的知识补充。请用中文回答。\n\n' + searchContext },
+            { role: 'user', content: message }
+        ];
+    }
 
     // 调用 AI（流式）
     const modelId = getCurrentModel();
@@ -106,7 +122,7 @@ export function sendChatMessage(message) {
     // 创建 AbortController，支持页面切换时取消
     _chatState.abortController = new AbortController();
 
-    streamAI(modelId, _chatState.messages, function(chunk) {
+    streamAI(modelId, messagesForAI, function(chunk) {
         fullText += chunk;
         updateStreamingBubble(aiBubble, fullText);
     }, _chatState.currentAgent, _chatState.abortController.signal).then(function(reply) {
@@ -562,10 +578,41 @@ function createChatInput(chatArea) {
     input.placeholder = '输入你的职业问题...';
     input.setAttribute('aria-label', '输入职业问题');
 
+    // 联网搜索按钮
+    const searchBtn = createEl('button', 'web-search-btn');
+    searchBtn.title = '联网搜索后回答';
+    searchBtn.appendChild(icon('globe', 16));
+
     const sendBtn = createEl('button', 'send-btn');
     sendBtn.textContent = '';
     sendBtn.appendChild(icon('send', 18));
     sendBtn.style.cssText = 'font-size:18px;';
+
+    // 联网搜索点击
+    searchBtn.addEventListener('click', async function() {
+        const msg = input.value.trim();
+        if (!msg || _chatState.isLoading) return;
+
+        searchBtn.disabled = true;
+        searchBtn.classList.add('searching');
+        searchBtn.innerHTML = '';
+        searchBtn.appendChild(icon('loader', 16));
+
+        const result = await searchWeb(msg);
+
+        searchBtn.disabled = false;
+        searchBtn.classList.remove('searching');
+        searchBtn.innerHTML = '';
+        searchBtn.appendChild(icon('globe', 16));
+
+        if (result.success && result.text) {
+            sendChatMessage(msg, result.text);
+        } else {
+            showToast('未找到相关搜索结果，已使用纯AI回答', 'warning');
+            sendChatMessage(msg);
+        }
+        input.value = '';
+    });
 
     sendBtn.addEventListener('click', function() {
         const msg = input.value.trim();
@@ -586,6 +633,7 @@ function createChatInput(chatArea) {
     });
 
     area.appendChild(input);
+    area.appendChild(searchBtn);
     area.appendChild(sendBtn);
 
     return area;
