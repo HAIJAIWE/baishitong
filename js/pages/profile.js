@@ -552,7 +552,7 @@ function showSupportModal() {
     // 说明
     const desc = document.createElement('p');
     desc.style.cssText = 'font-size:var(--text-sm);color:var(--text-secondary);margin:0 0 var(--space-5);line-height:1.6;';
-    desc.textContent = '百事通目前完全免费开放，服务器和域名费用由开发者个人承担。如果你觉得百事通对你有帮助，可以赞助支持一下，帮助百事通持续运营和更新。金额随意，心意最重要～';
+    desc.textContent = '如果百事通对你有帮助，可以随缘请我喝杯奶茶，就当是小小的创作鼓励。\n金额不分多少，每份都是心意，非常感谢～';
     wrap.appendChild(desc);
 
     // 资金用途
@@ -560,9 +560,9 @@ function showSupportModal() {
     useWrap.style.cssText = 'background:var(--bg-primary);border-radius:var(--radius-lg);padding:var(--space-3) var(--space-4);margin-bottom:var(--space-5);text-align:left;';
     const useTitle = document.createElement('div');
     useTitle.style.cssText = 'font-size:var(--text-xs);font-weight:600;color:var(--text-tertiary);margin-bottom:var(--space-2);';
-    useTitle.textContent = '赞助将用于';
+    useTitle.textContent = '你的支持将用于';
     useWrap.appendChild(useTitle);
-    var uses = ['云服务器租用和维护', '域名续费', '数据存储和CDN加速', '持续功能开发和更新'];
+    var uses = ['持续更新和维护百事通', '服务器和域名费用', '新功能开发'];
     for (var i = 0; i < uses.length; i++) {
         var useItem = document.createElement('div');
         useItem.style.cssText = 'font-size:var(--text-sm);color:var(--text-secondary);padding:2px 0;display:flex;align-items:center;gap:6px;';
