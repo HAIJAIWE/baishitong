@@ -62,6 +62,16 @@ export function initAiChat() {
             sessionStorage.removeItem('ai_pending_message');
             _chatState.currentAgent = pendingAgent;
             sendChatMessage(pendingMessage);
+            return;
+        }
+        // 检查从学习计划跳转过来的待填入问题
+        if (window._pendingAiQuestion) {
+            var input = document.getElementById('aiChatInput');
+            if (input) {
+                input.value = window._pendingAiQuestion;
+                input.focus();
+            }
+            window._pendingAiQuestion = null;
         }
     }, 300);
 }
