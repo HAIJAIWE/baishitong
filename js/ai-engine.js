@@ -361,9 +361,18 @@ export async function callAI(modelId, messages, agentId) {
             systemPrompt = agent.prompt;
         }
     }
+
+    // 如果对话较长，动态追加防重复提醒
+    if (messages.length > 4) {
+        systemPrompt += '\n\n【重要提醒】这是第' + Math.ceil(messages.length / 2) + '轮对话。你必须：\n'
+            + '- 不要重复之前已经说过的内容、建议或资源\n'
+            + '- 针对用户当前的问题给出全新的、有针对性的回答\n'
+            + '- 如果用户的问题和之前类似，简要回答并主动问用户是否想了解其他方面';
+    }
+
     const fullMessages = [
         { role: 'system', content: systemPrompt }
-    ].concat(messages.slice(-20));
+    ].concat(messages.slice(-8));
 
     // Claude 使用特殊格式
     if (modelConfig.customFormat === 'anthropic') {
@@ -500,9 +509,18 @@ export async function streamAI(modelId, messages, onChunk, agentId, signal) {
             systemPrompt = agent.prompt;
         }
     }
+
+    // 如果对话较长，动态追加防重复提醒
+    if (messages.length > 4) {
+        systemPrompt += '\n\n【重要提醒】这是第' + Math.ceil(messages.length / 2) + '轮对话。你必须：\n'
+            + '- 不要重复之前已经说过的内容、建议或资源\n'
+            + '- 针对用户当前的问题给出全新的、有针对性的回答\n'
+            + '- 如果用户的问题和之前类似，简要回答并主动问用户是否想了解其他方面';
+    }
+
     const fullMessages = [
         { role: 'system', content: systemPrompt }
-    ].concat(messages.slice(-20));
+    ].concat(messages.slice(-8));
 
     // Claude 使用特殊格式
     if (modelConfig.customFormat === 'anthropic') {
