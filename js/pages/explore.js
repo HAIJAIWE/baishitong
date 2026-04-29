@@ -646,36 +646,6 @@ function _renderJobDetailContent(job, jobId) {
                         stepInfo.appendChild(tipEl);
                     }
 
-                    // === Feature 2: 学习资源链接（多平台） ===
-                    const resourceWrap = createEl('div', 'step-resource-wrap');
-
-                    const searchQuery = encodeURIComponent(job.name + ' ' + step.title);
-
-                    // 学习平台列表
-                    const platforms = [
-                        { name: 'B站', url: 'https://search.bilibili.com/all?keyword=' + searchQuery, icon: 'tv', color: '#FB7299' },
-                        { name: '慕课网', url: 'https://www.imooc.com/search/?words=' + searchQuery, icon: 'graduationCap', color: '#F01414' },
-                        { name: '中国大学MOOC', url: 'https://www.icourse163.org/search.htm?search=' + searchQuery, icon: 'building', color: '#C3002F' },
-                        { name: '百度', url: 'https://www.baidu.com/s?wd=' + searchQuery, icon: 'search', color: '#3B82F6' }
-                    ];
-
-                    platforms.forEach(function(p) {
-                        const link = createEl('a', 'step-resource-link');
-                        link.textContent = '';
-                        link.appendChild(icon(p.icon, 14, p.color));
-                        link.appendChild(document.createTextNode(' ' + p.name));
-                        link.target = '_blank';
-                        link.rel = 'noopener';
-                        link.href = p.url;
-                        link.style.color = p.color;
-                        link.addEventListener('click', function(e) {
-                            e.stopPropagation();
-                        });
-                        resourceWrap.appendChild(link);
-                    });
-
-                    stepInfo.appendChild(resourceWrap);
-
                     stepItem.appendChild(stepIcon);
                     stepItem.appendChild(stepInfo);
 

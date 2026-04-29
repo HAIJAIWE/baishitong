@@ -2219,19 +2219,6 @@
 }
 
 /* Feature 2: 学习资源链接 */
-.step-resource {
-    display: inline-block;
-    margin-top: var(--space-2);
-    font-size: var(--text-xs);
-    color: var(--accent);
-    text-decoration: none;
-    opacity: 0.8;
-}
-
-.step-resource:hover {
-    opacity: 1;
-    text-decoration: underline;
-}
 
 /* Feature 3: 学习计划 */
 .plan-section {
