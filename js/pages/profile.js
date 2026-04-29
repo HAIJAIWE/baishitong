@@ -589,6 +589,7 @@ function showSupportModal() {
     qrImg.alt = '微信收款码';
     qrImg.style.cssText = 'width:200px;height:200px;border-radius:var(--radius-lg);object-fit:cover;box-shadow:var(--shadow-md);';
     qrWrap.appendChild(qrImg);
+    wrap.appendChild(qrWrap);
 
     // 感谢
     const tip = document.createElement('p');
