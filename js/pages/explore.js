@@ -818,14 +818,34 @@ function _renderJobDetailContent(job, jobId) {
             aiBtn.appendChild(icon('bot', 16));
             aiBtn.appendChild(document.createTextNode(' 向AI咨询学习建议'));
             aiBtn.addEventListener('click', function() {
-                const question = '我想学习成为' + job.name + '，目前的学习计划是：' +
-                    targetLevel.steps.map(function(s) { return s.title; }).join('、') +
-                    '。请给我一些学习建议和指导。';
-                // 存储待填入的问题
-                window._pendingAiQuestion = question;
-                // 跳转到AI问答页面（navigateTo内部会调用hideModal和initAiChat）
-                if (typeof navigateTo === 'function') {
-                    navigateTo('page-ai');
+                var question = '我想学习成为' + job.name + '，目前的学习计划是：\n';
+                question += '【本周重点】\n';
+                var weekSteps = targetLevel.steps.slice(0, 2);
+                for (var wi = 0; wi < weekSteps.length; wi++) {
+                    var wh = weekSteps[wi].estimatedTime ? Math.round(weekSteps[wi].estimatedTime / 60) : 0;
+                    question += '- ' + (weekSteps[wi].title || '') + (wh >= 1 ? '（约' + wh + '小时）' : '') + '\n';
+                }
+                question += '【本月目标】完成「第' + targetLevel.level + '级 · ' + (targetLevel.name || '') + '」全部 ' + targetLevel.steps.length + ' 个步骤\n';
+                for (var si = 0; si < targetLevel.steps.length; si++) {
+                    var sh = targetLevel.steps[si].estimatedTime ? Math.round(targetLevel.steps[si].estimatedTime / 60) : 0;
+                    question += '- ' + (targetLevel.steps[si].title || '') + (sh >= 1 ? '（约' + sh + '小时）' : '') + '\n';
+                }
+                question += '\n请根据以上学习计划，给我一些具体的学习建议和指导，包括学习顺序、重点难点、推荐资源等。';
+                try {
+                    if (navigator.clipboard && navigator.clipboard.writeText) {
+                        navigator.clipboard.writeText(question);
+                    } else {
+                        var ta = document.createElement('textarea');
+                        ta.value = question;
+                        ta.style.cssText = 'position:fixed;opacity:0;';
+                        document.body.appendChild(ta);
+                        ta.select();
+                        document.execCommand('copy');
+                        document.body.removeChild(ta);
+                    }
+                    showToast('学习计划已复制，去AI问答粘贴即可', 'success');
+                } catch(e) {
+                    showToast('复制失败，请手动复制', 'error');
                 }
             });
             planWrap.appendChild(aiBtn);
