@@ -43,6 +43,7 @@ function renderHome(container) {
     const recentSection = createRecentSection();
 
     container.appendChild(heroSection);
+    container.appendChild(createAnnouncement());
     container.appendChild(quickSection);
     container.appendChild(recommendSection);
     container.appendChild(categorySection);
@@ -474,5 +475,36 @@ function createRecentSection() {
     });
 
     section.appendChild(list);
+    return section;
+}
+
+// ==================== 公告栏 ====================
+
+function createAnnouncement() {
+    var section = createEl('div', 'announcement-bar');
+
+    var icon = createEl('span', 'announcement-icon');
+    icon.appendChild(document.createTextNode('📢'));
+    section.appendChild(icon);
+
+    var text = createEl('div', 'announcement-text');
+    text.textContent = '百事通持续更新中！后续将上线社区互动、更多职业数据、用户作品集等功能，敬请期待～';
+    section.appendChild(text);
+
+    var closeBtn = createEl('span', 'announcement-close');
+    closeBtn.textContent = '×';
+    closeBtn.addEventListener('click', function() {
+        section.style.display = 'none';
+        try { localStorage.setItem('bst_announcement_closed', '1'); } catch(e) {}
+    });
+    section.appendChild(closeBtn);
+
+    // 检查是否已关闭
+    try {
+        if (localStorage.getItem('bst_announcement_closed') === '1') {
+            section.style.display = 'none';
+        }
+    } catch(e) {}
+
     return section;
 }

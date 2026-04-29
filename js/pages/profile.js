@@ -206,9 +206,9 @@ function createSettingsList() {
             action: 'achievements'
         },
         {
-            icon: 'coffee',
-            name: '请我喝奶茶',
-            desc: '如果对你有帮助的话 ☕',
+            icon: 'heart',
+            name: '赞助支持',
+            desc: '帮助百事通持续运营 ❤️',
             action: 'support'
         },
         {
@@ -540,20 +540,36 @@ function showSupportModal() {
     // 图标
     const iconWrap = document.createElement('div');
     iconWrap.style.cssText = 'font-size:48px;margin-bottom:var(--space-4);';
-    iconWrap.textContent = '🧋';
+    iconWrap.textContent = '❤️';
     wrap.appendChild(iconWrap);
 
     // 标题
     const title = document.createElement('h3');
     title.style.cssText = 'font-size:var(--text-lg);font-weight:700;color:var(--text-primary);margin:0 0 var(--space-2);';
-    title.textContent = '请我喝一杯奶茶';
+    title.textContent = '赞助支持百事通';
     wrap.appendChild(title);
 
     // 说明
     const desc = document.createElement('p');
     desc.style.cssText = 'font-size:var(--text-sm);color:var(--text-secondary);margin:0 0 var(--space-5);line-height:1.6;';
-    desc.textContent = '如果百事通对你有帮助，可以请我喝一杯奶茶 ☕\n金额随意，心意最重要～';
+    desc.textContent = '百事通目前完全免费开放，服务器和域名费用由开发者个人承担。如果你觉得百事通对你有帮助，可以赞助支持一下，帮助百事通持续运营和更新。金额随意，心意最重要～';
     wrap.appendChild(desc);
+
+    // 资金用途
+    const useWrap = document.createElement('div');
+    useWrap.style.cssText = 'background:var(--bg-primary);border-radius:var(--radius-lg);padding:var(--space-3) var(--space-4);margin-bottom:var(--space-5);text-align:left;';
+    const useTitle = document.createElement('div');
+    useTitle.style.cssText = 'font-size:var(--text-xs);font-weight:600;color:var(--text-tertiary);margin-bottom:var(--space-2);';
+    useTitle.textContent = '赞助将用于';
+    useWrap.appendChild(useTitle);
+    var uses = ['云服务器租用和维护', '域名续费', '数据存储和CDN加速', '持续功能开发和更新'];
+    for (var i = 0; i < uses.length; i++) {
+        var useItem = document.createElement('div');
+        useItem.style.cssText = 'font-size:var(--text-sm);color:var(--text-secondary);padding:2px 0;display:flex;align-items:center;gap:6px;';
+        useItem.textContent = '✓ ' + uses[i];
+        useWrap.appendChild(useItem);
+    }
+    wrap.appendChild(useWrap);
 
     // 微信收款码区域
     const qrWrap = document.createElement('div');
@@ -561,10 +577,10 @@ function showSupportModal() {
 
     const qrLabel = document.createElement('span');
     qrLabel.style.cssText = 'font-size:var(--text-xs);color:var(--text-tertiary);';
-    qrLabel.textContent = '微信扫码赞赏';
+    qrLabel.textContent = '微信扫码赞助';
     qrWrap.appendChild(qrLabel);
 
-    // 收款码占位 - 用一个带边框的区域表示
+    // 收款码占位
     const qrPlaceholder = document.createElement('div');
     qrPlaceholder.style.cssText = 'width:180px;height:180px;border:2px dashed var(--border);border-radius:var(--radius-lg);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px;background:var(--bg-primary);';
     const qrIcon = document.createElement('span');
@@ -577,17 +593,17 @@ function showSupportModal() {
     qrPlaceholder.appendChild(qrText);
     qrWrap.appendChild(qrPlaceholder);
 
-    // 提示
+    // 感谢
     const tip = document.createElement('p');
     tip.style.cssText = 'font-size:var(--text-xs);color:var(--text-tertiary);margin:0 0 var(--space-4);';
-    tip.textContent = '你的支持是我持续更新的动力 ❤️';
+    tip.textContent = '感谢每一位支持者的心意，百事通会持续更新 ❤️';
     wrap.appendChild(tip);
 
     // 关闭按钮
     const closeBtn = document.createElement('button');
     closeBtn.className = 'btn btn-outline';
     closeBtn.style.cssText = 'width:100%;';
-    closeBtn.textContent = '好的，下次一定';
+    closeBtn.textContent = '我了解了';
     closeBtn.addEventListener('click', function() { hideModal(); });
     wrap.appendChild(closeBtn);
 
