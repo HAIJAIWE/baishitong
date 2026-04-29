@@ -65,29 +65,30 @@
 .settings-item,
 .plan-section {
     position: relative;
-    overflow: hidden;
     transition: transform var(--duration-normal) var(--ease-out),
                 box-shadow var(--duration-normal) var(--ease-out);
 }
 
+/* 边框流光 - 使用伪元素实现旋转渐变边框 */
 .recommend-card::after,
 .category-card::after,
 .job-card::after {
     content: '';
     position: absolute;
-    top: -50%;
-    left: -50%;
-    width: 200%;
-    height: 200%;
-    background: linear-gradient(
-        45deg,
-        transparent 40%,
-        rgba(245, 158, 11, 0.06) 45%,
-        rgba(245, 158, 11, 0.12) 50%,
-        rgba(245, 158, 11, 0.06) 55%,
-        transparent 60%
+    inset: -1px;
+    border-radius: inherit;
+    padding: 1px;
+    background: conic-gradient(
+        from var(--border-angle, 0deg),
+        transparent 0%,
+        var(--accent) 10%,
+        var(--accent-hover) 20%,
+        transparent 30%
     );
-    animation: cardShimmer 4s ease-in-out infinite;
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    animation: borderRotate 4s linear infinite;
     pointer-events: none;
     opacity: 0;
     transition: opacity var(--duration-normal) ease;
@@ -99,23 +100,27 @@
     opacity: 1;
 }
 
-@keyframes cardShimmer {
-    0% { transform: translateX(-100%) translateY(-100%); }
-    100% { transform: translateX(100%) translateY(100%); }
+@property --border-angle {
+    syntax: '<angle>';
+    initial-value: 0deg;
+    inherits: false;
+}
+
+@keyframes borderRotate {
+    0% { --border-angle: 0deg; }
+    100% { --border-angle: 360deg; }
 }
 
 /* 卡片悬浮效果 */
 .recommend-card:hover,
 .job-card:hover {
     transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(245, 158, 11, 0.15),
-                0 0 0 1px rgba(245, 158, 11, 0.1);
+    box-shadow: 0 8px 25px rgba(245, 158, 11, 0.15);
 }
 
 .category-card:hover {
     transform: translateY(-2px) scale(1.02);
-    box-shadow: 0 8px 25px rgba(59, 130, 246, 0.15),
-                0 0 0 1px rgba(59, 130, 246, 0.1);
+    box-shadow: 0 8px 25px rgba(59, 130, 246, 0.15);
 }
 
 /* === 4. 按钮发光效果 === */
@@ -362,13 +367,11 @@
 /* === 16. 亮色模式适配 === */
 [data-theme="light"] .recommend-card:hover,
 [data-theme="light"] .job-card:hover {
-    box-shadow: 0 8px 25px rgba(37, 99, 235, 0.12),
-                0 0 0 1px rgba(37, 99, 235, 0.08);
+    box-shadow: 0 8px 25px rgba(37, 99, 235, 0.12);
 }
 
 [data-theme="light"] .category-card:hover {
-    box-shadow: 0 8px 25px rgba(37, 99, 235, 0.12),
-                0 0 0 1px rgba(37, 99, 235, 0.08);
+    box-shadow: 0 8px 25px rgba(37, 99, 235, 0.12);
 }
 
 [data-theme="light"] .btn-primary:hover {
