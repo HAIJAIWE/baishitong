@@ -7,7 +7,7 @@ export const STORAGE_PREFIX = 'byt_';
 
 // 默认状态
 const defaultState = {
-    theme: 'light',            // 'dark' | 'light'
+    theme: 'dark',             // 'dark' | 'light'
     deviceMode: 'mobile',     // 'mobile' | 'desktop'
     currentModel: 'gpt-4o-mini', // 当前AI模型（Puter.js 免费）
     favorites: [],            // 收藏的职业ID列表 ['job_001', 'job_002']
