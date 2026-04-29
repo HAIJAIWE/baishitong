@@ -121,7 +121,7 @@
     -webkit-backdrop-filter: blur(4px);
     z-index: var(--z-modal);
     display: none;
-    align-items: flex-end;
+    align-items: center;
     justify-content: center;
 }
 
@@ -130,14 +130,16 @@
 }
 
 .modal-content {
-    width: 100%;
+    width: calc(100% - var(--space-8));
     max-width: var(--app-max-width);
-    max-height: 90vh;
+    max-height: calc(85vh - var(--bottom-nav-height));
     background: var(--bg-secondary);
-    border-radius: var(--radius-2xl) var(--radius-2xl) 0 0;
+    border-radius: var(--radius-2xl);
     padding: var(--space-6);
+    padding-bottom: calc(var(--space-6) + var(--safe-area-bottom));
     overflow-y: auto;
     animation: modalSlideUp var(--duration-normal) var(--ease-out);
+    margin-bottom: var(--bottom-nav-height);
 }
 
 @keyframes modalSlideUp {
