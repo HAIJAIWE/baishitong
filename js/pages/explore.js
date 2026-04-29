@@ -113,7 +113,9 @@ function createCategoryTabs() {
             '不便分类的其他从业人员': '其他'
         };
         const displayName = shortNames[rawName] || (rawName.length > 6 ? rawName.substring(0, 5) + '…' : rawName);
-        tab.textContent = (group.icon || '') + ' ' + displayName;
+        tab.textContent = '';
+        if (group.icon) tab.appendChild(icon(group.icon, 16));
+        tab.appendChild(document.createTextNode(' ' + displayName));
         tab.title = group.name || '';
 
         tab.addEventListener('click', function() {
