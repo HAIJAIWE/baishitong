@@ -52,6 +52,9 @@ export async function initApp() {
         await continueInit();
     } catch (e) {
         console.error('应用初始化失败:', e);
+        console.error('错误堆栈:', e.stack || '无堆栈');
+        console.error('错误消息:', e.message || '无消息');
+        console.error('错误名称:', e.name || '无名称');
         showErrorFileProtocol();
     }
 }
