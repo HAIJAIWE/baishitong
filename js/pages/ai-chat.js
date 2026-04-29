@@ -8,12 +8,14 @@ import { getModelConfig, getAIModels, streamAI, renderMarkdown, isModelConfigure
 import { isLoggedIn, getCurrentUser, storeApiKey, getStoredApiKey, logout } from '../auth.js';
 import { resetPageInit } from '../router.js';
 import { storageGet, storageSet, storageRemove } from '../utils/storage.js';
+import { icon } from '../utils/icons.js';
 
 // 对话状态
 const _chatState = {
     messages: [],
     isLoading: false,
-    currentAgent: null  // 当前选中的智能体 ID
+    currentAgent: null,  // 当前选中的智能体 ID
+    abortController: null // 用于取消流式请求
 };
 
 const CHAT_HISTORY_KEY = 'ai_chat_history';
@@ -25,6 +27,13 @@ const MAX_HISTORY_MESSAGES = 50;
 export function initAiChat() {
     const container = document.getElementById('page-ai');
     if (!container) return;
+
+    // 如果有正在进行的流式请求，取消它
+    if (_chatState.abortController) {
+        _chatState.abortController.abort();
+        _chatState.abortController = null;
+    }
+    _chatState.isLoading = false;
 
     clearContainer(container);
 
@@ -43,6 +52,18 @@ export function initAiChat() {
     }
 
     renderAiChat(container);
+
+    // 检查是否有待发送的预设消息（从测评页跳转过来）
+    setTimeout(function() {
+        var pendingAgent = sessionStorage.getItem('ai_pending_agent');
+        var pendingMessage = sessionStorage.getItem('ai_pending_message');
+        if (pendingAgent && pendingMessage) {
+            sessionStorage.removeItem('ai_pending_agent');
+            sessionStorage.removeItem('ai_pending_message');
+            _chatState.currentAgent = pendingAgent;
+            sendChatMessage(pendingMessage);
+        }
+    }, 300);
 }
 
 window.initAiChat = initAiChat;
@@ -72,10 +93,13 @@ export function sendChatMessage(message) {
     const modelId = getCurrentModel();
     let fullText = '';
 
+    // 创建 AbortController，支持页面切换时取消
+    _chatState.abortController = new AbortController();
+
     streamAI(modelId, _chatState.messages, function(chunk) {
         fullText += chunk;
         updateStreamingBubble(aiBubble, fullText);
-    }, _chatState.currentAgent).then(function(reply) {
+    }, _chatState.currentAgent, _chatState.abortController.signal).then(function(reply) {
         // 流式完成，最终渲染
         finalizeStreamingBubble(aiBubble, reply || fullText);
 
@@ -89,23 +113,29 @@ export function sendChatMessage(message) {
         saveChatHistory();
 
         _chatState.isLoading = false;
+        _chatState.abortController = null;
     }).catch(function(err) {
-        // 流式失败，显示错误
+        // 流式失败
+        _chatState.isLoading = false;
+        _chatState.abortController = null;
+
+        // 如果是用户主动取消（切换页面），不显示错误
+        if (err.name === 'AbortError') return;
+
+        // 显示错误
         if (aiBubble && aiBubble.parentNode) {
             aiBubble.parentNode.removeChild(aiBubble);
         }
 
         const errorBubble = createEl('div', 'chat-bubble ai');
         const avatar = createEl('div', 'bubble-avatar');
-        avatar.textContent = '⚠️';
+        avatar.appendChild(icon('alertTriangle', 18, 'var(--warning)'));
         const content = createEl('div', 'bubble-content');
         content.style.cssText = 'color:var(--warning);';
         content.textContent = err.message || '请求失败';
         errorBubble.appendChild(avatar);
         errorBubble.appendChild(content);
         chatArea.appendChild(errorBubble);
-
-        _chatState.isLoading = false;
     });
 }
 
@@ -119,7 +149,9 @@ function renderLoginView(container) {
     // 头部
     const header = createEl('div', 'ai-header');
     const title = createEl('span', '');
-    title.textContent = '🤖 AI 问答';
+    title.textContent = '';
+    title.appendChild(icon('bot', 20));
+    title.appendChild(document.createTextNode(' AI 问答'));
     title.style.cssText = 'font-weight:var(--font-semibold);font-size:var(--text-lg);';
     header.appendChild(title);
     main.appendChild(header);
@@ -128,15 +160,15 @@ function renderLoginView(container) {
     const card = createEl('div', '');
     card.style.cssText = 'flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:var(--space-6);text-align:center;';
 
-    const icon = createEl('div', '');
-    icon.textContent = '🔐';
-    icon.style.cssText = 'font-size:48px;margin-bottom:var(--space-4);';
+    const iconEl = createEl('div', '');
+    iconEl.appendChild(icon('lock', 18));
+    iconEl.style.cssText = 'font-size:48px;margin-bottom:var(--space-4);';
 
     const desc = createEl('p', '');
     desc.textContent = '登录后即可使用 AI 问答功能';
     desc.style.cssText = 'color:var(--text-secondary);margin-bottom:var(--space-6);';
 
-    card.appendChild(icon);
+    card.appendChild(iconEl);
     card.appendChild(desc);
 
     // 登录表单
@@ -260,50 +292,117 @@ function createAiHeader() {
     agentArrow.textContent = '▾';
     agentArrow.style.cssText = 'font-size:10px;color:var(--text-tertiary);margin-left:2px;';
 
+    agentSelector.appendChild(agentIcon);
+    agentSelector.appendChild(agentLabel);
+    agentSelector.appendChild(agentArrow);
+
+    // 下拉菜单（必须在 updateAgentDisplay 之前创建）
+    const dropdown = createEl('div', 'agent-dropdown');
+
     // 获取当前选中的智能体
     function updateAgentDisplay() {
         if (_chatState.currentAgent) {
             const agent = AI_AGENTS.find(function(a) { return a.id === _chatState.currentAgent; });
             if (agent) {
-                agentIcon.textContent = agent.icon;
+                agentIcon.textContent = '';
+                agentIcon.appendChild(icon(agent.icon, 18));
                 agentLabel.textContent = agent.name;
-                return;
             }
+        } else {
+            agentIcon.textContent = '';
+            agentIcon.appendChild(icon('bot', 18));
+            agentLabel.textContent = 'AI助手';
         }
-        agentIcon.textContent = '🤖';
-        agentLabel.textContent = 'AI助手';
+        // 同步更新下拉菜单的选中状态
+        var allOpts = dropdown.querySelectorAll('.agent-option');
+        allOpts.forEach(function(opt) {
+            opt.classList.remove('active');
+            var checkMark = opt.querySelector('.agent-check');
+            if (checkMark) checkMark.remove();
+        });
+        if (_chatState.currentAgent) {
+            var idx = AI_AGENTS.findIndex(function(a) { return a.id === _chatState.currentAgent; });
+            if (idx >= 0 && allOpts[idx + 1]) {
+                allOpts[idx + 1].classList.add('active');
+                var check = createEl('span', 'agent-check');
+                check.textContent = '✓';
+                allOpts[idx + 1].appendChild(check);
+            }
+        } else if (allOpts[0]) {
+            allOpts[0].classList.add('active');
+            var check = createEl('span', 'agent-check');
+            check.textContent = '✓';
+            allOpts[0].appendChild(check);
+        }
     }
     updateAgentDisplay();
 
-    agentSelector.appendChild(agentIcon);
-    agentSelector.appendChild(agentLabel);
-    agentSelector.appendChild(agentArrow);
-
-    // 下拉菜单
-    const dropdown = createEl('div', 'agent-dropdown');
-
     // "通用"选项
     const defaultOpt = createEl('div', 'agent-option' + (!_chatState.currentAgent ? ' active' : ''));
-    defaultOpt.innerHTML = '<span>🤖</span><span>通用模式</span><span style="font-size:var(--text-xs);color:var(--text-tertiary);margin-left:auto;">默认</span>';
+    const defaultOptIcon = createEl('span', '');
+    defaultOptIcon.appendChild(icon('bot', 16));
+    const defaultOptName = createEl('span', '');
+    defaultOptName.textContent = '通用模式';
+    const defaultOptTag = createEl('span', '');
+    defaultOptTag.style.cssText = 'font-size:var(--text-xs);color:var(--text-tertiary);flex:1;text-align:right;';
+    defaultOptTag.textContent = '默认';
+    defaultOpt.appendChild(defaultOptIcon);
+    defaultOpt.appendChild(defaultOptName);
+    defaultOpt.appendChild(defaultOptTag);
     defaultOpt.addEventListener('click', function(e) {
         e.stopPropagation();
+        var prevAgent = _chatState.currentAgent;
         _chatState.currentAgent = null;
         updateAgentDisplay();
         dropdown.classList.remove('show');
         updateWelcomeForAgent();
+        // 切换到通用模式时也清空对话历史
+        if (prevAgent !== null) {
+            _chatState.messages = [];
+            storageRemove(CHAT_HISTORY_KEY);
+            var chatArea = document.getElementById('aiChatMessages');
+            if (chatArea) clearContainer(chatArea);
+            var welcome = document.getElementById('aiWelcome');
+            if (welcome) welcome.style.display = '';
+            showToast('已切换到通用模式，对话已重置');
+            // 让 AI 自我介绍
+            setTimeout(function() { sendChatMessage('你好，请简单介绍一下你自己，告诉我你能帮我做什么'); }, 400);
+        }
     });
     dropdown.appendChild(defaultOpt);
 
     // 各智能体选项
     AI_AGENTS.forEach(function(agent) {
         const opt = createEl('div', 'agent-option' + (_chatState.currentAgent === agent.id ? ' active' : ''));
-        opt.innerHTML = '<span>' + agent.icon + '</span><span>' + agent.name + '</span><span style="font-size:var(--text-xs);color:var(--text-tertiary);margin-left:auto;">' + agent.desc + '</span>';
+        const optIcon = createEl('span', '');
+        optIcon.appendChild(icon(agent.icon, 16));
+        const optName = createEl('span', '');
+        optName.textContent = agent.name;
+        const optDesc = createEl('span', '');
+        optDesc.style.cssText = 'font-size:var(--text-xs);color:var(--text-tertiary);flex:1;text-align:right;';
+        optDesc.textContent = agent.desc;
+        opt.appendChild(optIcon);
+        opt.appendChild(optName);
+        opt.appendChild(optDesc);
         opt.addEventListener('click', function(e) {
             e.stopPropagation();
+            var prevAgent = _chatState.currentAgent;
             _chatState.currentAgent = agent.id;
             updateAgentDisplay();
             dropdown.classList.remove('show');
             updateWelcomeForAgent();
+            // 切换智能体时清空对话历史，避免历史消息干扰新智能体
+            if (prevAgent !== agent.id) {
+                _chatState.messages = [];
+                storageRemove(CHAT_HISTORY_KEY);
+                var chatArea = document.getElementById('aiChatMessages');
+                if (chatArea) clearContainer(chatArea);
+                var welcome = document.getElementById('aiWelcome');
+                if (welcome) welcome.style.display = '';
+                showToast('已切换到「' + agent.name + '」，对话已重置');
+                // 让 AI 自我介绍
+                setTimeout(function() { sendChatMessage('你好，请简单介绍一下你自己，告诉我你能帮我做什么'); }, 400);
+            }
         });
         dropdown.appendChild(opt);
     });
@@ -330,7 +429,8 @@ function createAiHeader() {
     // 清除历史按钮
     const clearBtn = createEl('div', '');
     clearBtn.style.cssText = 'cursor:pointer;font-size:var(--text-sm);color:var(--text-tertiary);padding:4px 6px;border-radius:6px;';
-    clearBtn.textContent = '🗑️';
+    clearBtn.textContent = '';
+    clearBtn.appendChild(icon('trash2', 18));
     clearBtn.title = '清除聊天记录';
     clearBtn.addEventListener('click', function() {
         if (confirm('确定要清除所有聊天记录吗？')) {
@@ -345,7 +445,8 @@ function createAiHeader() {
     // 登出按钮
     const logoutBtn = createEl('div', '');
     logoutBtn.style.cssText = 'cursor:pointer;font-size:var(--text-sm);color:var(--text-tertiary);padding:4px 6px;border-radius:6px;';
-    logoutBtn.textContent = '🚪';
+    logoutBtn.textContent = '';
+    logoutBtn.appendChild(icon('doorOpen', 18));
     logoutBtn.title = '登出';
     logoutBtn.addEventListener('click', function() {
         if (confirm('确定要登出吗？')) {
@@ -386,7 +487,11 @@ function updateWelcomeForAgent() {
     const input = document.getElementById('aiChatInput');
     if (_chatState.currentAgent) {
         const agent = AI_AGENTS.find(function(a) { return a.id === _chatState.currentAgent; });
-        if (titleEl) titleEl.textContent = agent.icon + ' ' + agent.name + '已就绪';
+        if (titleEl) {
+            titleEl.textContent = '';
+            titleEl.appendChild(icon(agent.icon, 18));
+            titleEl.appendChild(document.createTextNode(' ' + agent.name + '已就绪'));
+        }
         if (input) input.placeholder = '向' + agent.name + '提问...';
     } else {
         if (titleEl) titleEl.textContent = '你好！我是百事通AI助手';
@@ -400,8 +505,8 @@ function createWelcomeMessage() {
     const welcome = createEl('div', 'ai-welcome');
     welcome.id = 'aiWelcome';
 
-    const icon = createEl('div', 'welcome-icon');
-    icon.textContent = '🤖';
+    const welcomeIcon = createEl('div', 'welcome-icon');
+    welcomeIcon.appendChild(icon('bot', 18));
 
     const title = createEl('div', 'welcome-title');
     title.textContent = '你好！我是百事通AI助手';
@@ -409,7 +514,7 @@ function createWelcomeMessage() {
     const desc = createEl('div', 'welcome-desc');
     desc.textContent = '可以问我任何关于职业的问题';
 
-    welcome.appendChild(icon);
+    welcome.appendChild(welcomeIcon);
     welcome.appendChild(title);
     welcome.appendChild(desc);
 
@@ -492,7 +597,7 @@ function appendUserBubble(container, text) {
 function appendAiBubble(container, text) {
     const bubble = createEl('div', 'chat-bubble ai');
     const avatar = createEl('div', 'bubble-avatar');
-    avatar.textContent = '🤖';
+    avatar.appendChild(icon('bot', 18));
     const content = createEl('div', 'bubble-content');
     content.innerHTML = renderMarkdown(text);
     bubble.appendChild(avatar);
@@ -504,7 +609,7 @@ function appendAiBubble(container, text) {
 function showTypingIndicator(container) {
     const bubble = createEl('div', 'chat-bubble ai');
     const avatar = createEl('div', 'bubble-avatar');
-    avatar.textContent = '🤖';
+    avatar.appendChild(icon('bot', 18));
     const content = createEl('div', 'bubble-content');
     const typing = createEl('div', 'typing-indicator');
     typing.innerHTML = '<span></span><span></span><span></span>';
@@ -521,7 +626,7 @@ function showTypingIndicator(container) {
 function createStreamingBubble(container) {
     const bubble = createEl('div', 'chat-bubble ai');
     const avatar = createEl('div', 'bubble-avatar');
-    avatar.textContent = '🤖';
+    avatar.appendChild(icon('bot', 18));
     const content = createEl('div', 'bubble-content streaming-content');
     const cursor = createEl('span', 'streaming-cursor');
     cursor.textContent = '▊';
@@ -587,7 +692,9 @@ function showModelSelectorPanel() {
 
     // 国际模型
     const intlTitle = createEl('div', 'modal-sub-title');
-    intlTitle.textContent = '🌐 国际模型';
+    intlTitle.textContent = '';
+    intlTitle.appendChild(icon('globe', 16));
+    intlTitle.appendChild(document.createTextNode(' 国际模型'));
     intlTitle.style.cssText = 'font-size:var(--text-xs);color:var(--text-tertiary);margin:var(--space-3) 0 var(--space-1);';
     panel.appendChild(intlTitle);
 
@@ -602,7 +709,9 @@ function showModelSelectorPanel() {
     const customModels = models.filter(function(m) { return !m.builtin; });
     if (customModels.length > 0) {
         const customTitle = createEl('div', 'modal-sub-title');
-        customTitle.textContent = '⚙️ 自定义模型';
+        customTitle.textContent = '';
+        customTitle.appendChild(icon('settings', 16));
+        customTitle.appendChild(document.createTextNode(' 自定义模型'));
         customTitle.style.cssText = 'font-size:var(--text-xs);color:var(--text-tertiary);margin:var(--space-3) 0 var(--space-1);';
         panel.appendChild(customTitle);
 
@@ -614,7 +723,9 @@ function showModelSelectorPanel() {
     // 添加自定义模型按钮
     const addBtn = createEl('button', 'btn btn-secondary');
     addBtn.style.cssText = 'width:100%;margin-top:var(--space-3);';
-    addBtn.textContent = '➕ 添加自定义模型';
+    addBtn.textContent = '';
+    addBtn.appendChild(icon('plus', 14));
+    addBtn.appendChild(document.createTextNode(' 添加自定义模型'));
     addBtn.addEventListener('click', function() {
         hideModal();
         showAddCustomModelPanel();
@@ -625,7 +736,9 @@ function showModelSelectorPanel() {
     const tipDiv = createEl('div', '');
     tipDiv.style.cssText = 'text-align:center;margin-top:var(--space-3);';
     const tipText = createEl('span', '');
-    tipText.textContent = '🔑 点击模型卡片配置 API Key';
+    tipText.textContent = '';
+    tipText.appendChild(icon('key', 14));
+    tipText.appendChild(document.createTextNode(' 点击模型卡片配置 API Key'));
     tipText.style.cssText = 'font-size:var(--text-xs);color:var(--text-tertiary);';
     tipDiv.appendChild(tipText);
     panel.appendChild(tipDiv);
@@ -641,8 +754,8 @@ function createModelCard(model, currentModelId, canDelete) {
         card.classList.add('selected');
     }
 
-    const icon = createEl('span', 'model-icon');
-    icon.textContent = model.icon || '🤖';
+    const modelIcon = createEl('span', 'model-icon');
+    modelIcon.appendChild(icon(model.icon || 'bot', 18));
 
     const info = createEl('div', 'model-info');
 
@@ -671,10 +784,14 @@ function createModelCard(model, currentModelId, canDelete) {
     // 异步检查配置状态
     isModelConfigured(model.id).then(function(configured) {
         if (configured) {
-            status.textContent = '✅ 已配置';
+            status.textContent = '';
+            status.appendChild(icon('checkCircle', 14, 'var(--success)'));
+            status.appendChild(document.createTextNode(' 已配置'));
             status.style.color = 'var(--color-success)';
         } else {
-            status.textContent = '⚠️ 未配置Key';
+            status.textContent = '';
+            status.appendChild(icon('alertTriangle', 14, 'var(--warning)'));
+            status.appendChild(document.createTextNode(' 未配置Key'));
             status.style.color = 'var(--text-tertiary)';
         }
     });
@@ -684,7 +801,7 @@ function createModelCard(model, currentModelId, canDelete) {
     const check = createEl('span', 'model-check');
     check.textContent = currentModelId === model.id ? '✓' : '';
 
-    card.appendChild(icon);
+    card.appendChild(modelIcon);
     card.appendChild(info);
     card.appendChild(check);
 
@@ -730,7 +847,9 @@ function showApiKeyPanel(model) {
 
     // 标题
     const title = createEl('div', 'modal-section-title');
-    title.textContent = model.icon + ' ' + model.name + ' - API Key 设置';
+    title.textContent = '';
+    title.appendChild(icon(model.icon || 'bot', 18));
+    title.appendChild(document.createTextNode(' ' + model.name + ' - API Key 设置'));
     panel.appendChild(title);
 
     // 说明
@@ -832,13 +951,44 @@ function showAddCustomModelPanel() {
     if (!panel) return;
 
     const title = createEl('div', 'modal-section-title');
-    title.textContent = '➕ 添加自定义模型';
+    title.textContent = '';
+    title.appendChild(icon('plus', 16));
+    title.appendChild(document.createTextNode(' 添加自定义模型'));
     panel.appendChild(title);
 
     const desc = createEl('p', '');
     desc.textContent = '支持所有 OpenAI 兼容格式的 API';
     desc.style.cssText = 'color:var(--text-secondary);font-size:var(--text-sm);margin-bottom:var(--space-3);';
     panel.appendChild(desc);
+
+    // 模型推荐提示
+    var tipCard = createEl('div', '');
+    tipCard.style.cssText = 'background:var(--bg-tertiary);border-radius:var(--radius-md);padding:var(--space-3);margin-bottom:var(--space-3);font-size:var(--text-xs);line-height:1.6;color:var(--text-secondary);';
+
+    var tipTitle = createEl('div', '');
+    tipTitle.style.cssText = 'font-weight:600;color:var(--text-primary);margin-bottom:6px;font-size:var(--text-sm);';
+    tipTitle.textContent = '';
+    tipTitle.appendChild(icon('lightbulb', 14, 'var(--accent)'));
+    tipTitle.appendChild(document.createTextNode(' 模型推荐'));
+    tipCard.appendChild(tipTitle);
+
+    var tipGood = createEl('div', '');
+    tipGood.style.cssText = 'margin-bottom:6px;';
+    tipGood.innerHTML = '<span style="color:var(--success);font-weight:600;">推荐（指令遵从度高）：</span>'
+        + 'DeepSeek（deepseek-chat）、通义千问（qwen-turbo/qwen-plus）、智谱GLM（glm-4-flash）、Kimi（moonshot-v1-8k）、GPT-4o、Claude';
+    tipCard.appendChild(tipGood);
+
+    var tipBad = createEl('div', '');
+    tipBad.innerHTML = '<span style="color:var(--warning);font-weight:600;">不推荐（不遵循指令）：</span>'
+        + 'QVQ 等推理模型（会忽略 system prompt，偏离角色设定）、纯视觉模型、极小参数模型';
+    tipCard.appendChild(tipBad);
+
+    var tipNote = createEl('div', '');
+    tipNote.style.cssText = 'color:var(--text-tertiary);margin-top:6px;';
+    tipNote.textContent = '提示：模型对 system prompt 的遵从度决定了智能体是否能正常工作。';
+    tipCard.appendChild(tipNote);
+
+    panel.appendChild(tipCard);
 
     // 表单字段
     const fields = [
@@ -933,3 +1083,17 @@ window.clearChatHistory = clearChatHistory;
 
 // 暴露设置面板到全局（供 profile.js 调用）
 window.showSettingsPanel = showModelSelectorPanel;
+
+/**
+ * 外部调用：设置智能体并发送预设消息（供测评页面调用）
+ * @param {string} agentId - 智能体 ID
+ * @param {string} message - 预设消息内容
+ */
+export function chatWithAgent(agentId, message) {
+    _chatState.currentAgent = agentId;
+    // 保存到 sessionStorage，下次 initAiChat 时读取
+    sessionStorage.setItem('ai_pending_agent', agentId);
+    sessionStorage.setItem('ai_pending_message', message);
+}
+
+window.chatWithAgent = chatWithAgent;

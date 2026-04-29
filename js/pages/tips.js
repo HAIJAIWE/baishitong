@@ -3,10 +3,10 @@
 // 安全原则：所有用户输入和动态内容用 textContent 渲染
 
 import { clearContainer, createEl, showModal, hideModal } from '../utils/ui.js';
+import { icon } from '../utils/icons.js';
 
 let tipsData = null;
 let currentCategory = null;
-const currentSub = null;
 let searchKeyword = '';
 
 /**
@@ -27,11 +27,11 @@ export function initTips() {
             .catch(function() {
                 clearContainer(page);
                 const empty = createEl('div', 'empty-state');
-                const icon = createEl('div', 'empty-icon');
-                icon.textContent = '💡';
+                const iconWrap = createEl('div', 'empty-icon');
+                iconWrap.appendChild(icon('lightbulb', 20, 'var(--accent)'));
                 const title = createEl('div', 'empty-title');
                 title.textContent = '数据加载失败';
-                empty.appendChild(icon);
+                empty.appendChild(iconWrap);
                 empty.appendChild(title);
                 page.appendChild(empty);
             });
@@ -52,7 +52,9 @@ function renderPage(page) {
 
     // 顶部标题栏
     const header = createEl('div', 'tips-header');
-    const title = createEl('h1', 'tips-title', '💡 生活常识');
+    const title = createEl('h1', 'tips-title');
+    title.appendChild(icon('lightbulb', 18));
+    title.appendChild(document.createTextNode(' 生活常识'));
     const subtitle = createEl('p', 'tips-subtitle', tipsData.totalTips + '条实用小技巧');
     header.appendChild(title);
     header.appendChild(subtitle);
@@ -62,7 +64,8 @@ function renderPage(page) {
     const searchWrap = createEl('div', 'tips-search');
     const searchBox = createEl('div', 'search-box');
 
-    const searchIcon = createEl('span', 'search-icon', '🔍');
+    const searchIcon = createEl('span', 'search-icon');
+    searchIcon.appendChild(icon('search', 16));
 
     const searchInput = document.createElement('input');
     searchInput.className = 'input';
@@ -71,7 +74,7 @@ function renderPage(page) {
     searchInput.id = 'tipsSearchInput';
     searchInput.setAttribute('aria-label', '搜索生活常识');
 
-    const searchClear = createEl('span', 'search-clear', '✕');
+    const searchClear = createEl('span', 'search-clear', '×');
     searchClear.id = 'tipsSearchClear';
 
     searchBox.appendChild(searchIcon);
@@ -84,7 +87,9 @@ function renderPage(page) {
     const tabsWrap = createEl('div', 'tips-tabs');
     tabsWrap.id = 'tipsTabs';
 
-    const allBtn = createEl('button', 'chip active', '📋 全部');
+    const allBtn = createEl('button', 'chip active');
+    allBtn.appendChild(icon('clipboardList', 14));
+    allBtn.appendChild(document.createTextNode(' 全部'));
     allBtn.setAttribute('data-cat', 'all');
     tabsWrap.appendChild(allBtn);
 
@@ -333,11 +338,11 @@ function doSearch(keyword) {
 
     if (results.length === 0) {
         const empty = createEl('div', 'empty-state');
-        const icon = createEl('div', 'empty-icon');
-        icon.textContent = '🔍';
+        const iconEl = createEl('div', 'empty-icon');
+        iconEl.appendChild(icon('search', 18, 'var(--text-tertiary)'));
         const title = createEl('div', 'empty-title');
         title.textContent = '没有找到相关常识';
-        empty.appendChild(icon);
+        empty.appendChild(iconEl);
         empty.appendChild(title);
         content.appendChild(empty);
     } else {

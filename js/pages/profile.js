@@ -11,6 +11,7 @@ import { storageClear } from '../utils/storage.js';
 import { getAIModels } from '../ai-engine.js';
 import { removeStoredApiKey, logout, changePassword } from '../auth.js';
 import { isLeanCloudConfigured, saveLeanCloudConfig, getLeanCloudConfig } from '../leancloud-service.js';
+import { icon } from '../utils/icons.js';
 
 /**
  * 初始化个人中心
@@ -54,7 +55,7 @@ function createProfileHeader() {
     const header = createEl('div', 'profile-header');
 
     const avatar = createEl('div', 'profile-avatar');
-    avatar.textContent = '🌟';
+    avatar.appendChild(icon('sun', 24, '#F59E0B'));
 
     const name = createEl('div', 'profile-name');
     name.textContent = '百事通用户';
@@ -108,61 +109,61 @@ function createSettingsList() {
 
     const items = [
         {
-            icon: '🎨',
+            icon: 'palette',
             name: '主题切换',
             desc: '暗色 / 亮色模式',
             action: 'theme'
         },
         {
-            icon: '📱',
+            icon: 'smartphone',
             name: '设备模式',
             desc: '手机端 / 电脑端布局',
             action: 'device-mode'
         },
         {
-            icon: '🔑',
+            icon: 'key',
             name: 'AI 设置',
             desc: '配置 API Key 和模型',
             action: 'ai-settings'
         },
         {
-            icon: '🔐',
+            icon: 'lock',
             name: '修改密码',
             desc: '更改登录密码',
             action: 'change-password'
         },
         {
-            icon: '🔊',
+            icon: 'volume2',
             name: '音效',
             desc: '操作音效反馈',
             action: 'sound-toggle'
         },
         {
-            icon: '💬',
+            icon: 'messageCircle',
             name: '社区',
             desc: isLeanCloudConfigured() ? '已连接 LeanCloud' : '本地模式（点击配置）',
             action: 'community'
         },
         {
-            icon: '☁️',
+            icon: 'cloud',
             name: 'LeanCloud 配置',
             desc: isLeanCloudConfigured() ? '已配置' : '未配置',
             action: 'leancloud-config'
         },
         {
-            icon: '🏆',
+            icon: 'trophy',
             name: '成就',
             desc: '查看已解锁成就',
             action: 'achievements'
         },
         {
-            icon: 'ℹ️',
+            icon: 'info',
             name: '关于百事通',
             desc: '版本信息和说明',
             action: 'about'
         },
         {
-            icon: '🗑️',
+            icon: 'trash2',
             name: '清除数据',
             desc: '清除所有本地数据',
             action: 'clear'
@@ -172,8 +173,8 @@ function createSettingsList() {
     items.forEach(function(item) {
         const row = createEl('div', 'settings-item');
 
-        const icon = createEl('span', 'setting-icon');
-        icon.textContent = item.icon;
+        const iconEl = createEl('span', 'setting-icon');
+        iconEl.appendChild(icon(item.icon, 18));
 
         const info = createEl('div', 'setting-info');
 
@@ -186,7 +187,7 @@ function createSettingsList() {
         info.appendChild(name);
         info.appendChild(desc);
 
-        row.appendChild(icon);
+        row.appendChild(iconEl);
         row.appendChild(info);
 
         // 主题切换特殊处理：显示开关
@@ -364,9 +365,9 @@ function showAboutModal() {
     title.textContent = '关于百事通';
     panel.appendChild(title);
 
-    const icon = createEl('div', 'about-icon');
-    icon.textContent = '🌟';
-    panel.appendChild(icon);
+    const aboutIcon = createEl('div', 'about-icon');
+    aboutIcon.appendChild(icon('sun', 20, '#F59E0B'));
+    panel.appendChild(aboutIcon);
 
     const version = createEl('div', 'about-version');
     version.textContent = '百事通 v1.0';
@@ -408,7 +409,9 @@ function showChangePasswordModal() {
     if (!panel) return;
 
     const title = createEl('div', 'modal-section-title center');
-    title.textContent = '🔐 修改密码';
+    title.textContent = '';
+    title.appendChild(icon('lock', 18));
+    title.appendChild(document.createTextNode(' 修改密码'));
     panel.appendChild(title);
 
     const fields = [
@@ -480,7 +483,9 @@ async function showLeanCloudConfigPanel() {
     if (!panel) return;
 
     const title = createEl('div', 'modal-section-title center');
-    title.textContent = '☁️ LeanCloud 配置';
+    title.textContent = '';
+    title.appendChild(icon('cloud', 18));
+    title.appendChild(document.createTextNode(' LeanCloud 配置'));
     panel.appendChild(title);
 
     const desc = createEl('p', '');

@@ -2,6 +2,7 @@
 // 百事通 v1.0 (ES Modules)
 
 import { loadState, appState, getDeviceMode, setDeviceMode, checkAchievement } from './state.js';
+import { icon } from './utils/icons.js';
 import { loadData } from './data-loader.js';
 import { navigateTo } from './router.js';
 import { initSound } from './utils/sound.js';
@@ -16,6 +17,8 @@ import './pages/profile.js';
 import './pages/community.js';
 import './pages/achievements.js';
 import './pages/favorites.js';
+import './pages/checkin.js';
+import './pages/assessment.js';
 import './pages/onboarding.js';
 
 /**
@@ -28,6 +31,9 @@ export async function initApp() {
 
         // 应用主题（免责声明也需要主题）
         applyTheme(appState.theme);
+
+        // 初始化 SVG 图标
+        initIcons();
 
         // 应用设备模式
         applyDeviceMode(getDeviceMode());
@@ -151,6 +157,20 @@ function setupDisclaimer() {
 
     if (!overlay || !checkbox || !btn) return;
 
+    // 替换免责声明页面的 emoji 为 SVG 图标
+    var logoEl = overlay.querySelector('.disclaimer-logo');
+    if (logoEl) { logoEl.textContent = ''; logoEl.appendChild(icon('briefcase', 40, 'var(--accent)')); }
+
+    var disclaimerIcons = overlay.querySelectorAll('.disclaimer-icon');
+    var iconMap = ['clipboardList', 'bot', 'alertTriangle', 'shield'];
+    disclaimerIcons.forEach(function(el, i) {
+        if (iconMap[i]) { el.textContent = ''; el.appendChild(icon(iconMap[i], 20, 'var(--accent)')); }
+    });
+
+    var modeIcons = overlay.querySelectorAll('.mode-select-icon');
+    if (modeIcons[0]) { modeIcons[0].textContent = ''; modeIcons[0].appendChild(icon('smartphone', 24, 'var(--accent)')); }
+    if (modeIcons[1]) { modeIcons[1].textContent = ''; modeIcons[1].appendChild(icon('monitor', 24, 'var(--accent)')); }
+
     // 隐藏主应用
     if (appContainer) appContainer.style.display = 'none';
 
@@ -209,9 +229,9 @@ function showError(e) {
         const errorDiv = document.createElement('div');
         errorDiv.className = 'loading-page';
 
-        const icon = document.createElement('div');
-        icon.className = 'empty-icon';
-        icon.textContent = '😅';
+        const iconWrap = document.createElement('div');
+        iconWrap.className = 'empty-icon';
+        iconWrap.appendChild(icon('smile', 20, 'var(--text-secondary)'));
 
         const title = document.createElement('h2');
         title.className = 'empty-title';
@@ -228,7 +248,7 @@ function showError(e) {
             window.location.reload();
         });
 
-        errorDiv.appendChild(icon);
+        errorDiv.appendChild(iconWrap);
         errorDiv.appendChild(title);
         errorDiv.appendChild(desc);
         errorDiv.appendChild(btn);
@@ -245,9 +265,9 @@ function showErrorFileProtocol() {
         const errorDiv = document.createElement('div');
         errorDiv.className = 'loading-page';
 
-        const icon = document.createElement('div');
-        icon.className = 'empty-icon';
-        icon.textContent = '⚠️';
+        const iconWrap = document.createElement('div');
+        iconWrap.className = 'empty-icon';
+        iconWrap.appendChild(icon('alertTriangle', 20, 'var(--warning)'));
 
         const title = document.createElement('h2');
         title.className = 'empty-title';
@@ -270,7 +290,7 @@ function showErrorFileProtocol() {
             window.location.reload();
         });
 
-        errorDiv.appendChild(icon);
+        errorDiv.appendChild(iconWrap);
         errorDiv.appendChild(title);
         errorDiv.appendChild(desc);
         errorDiv.appendChild(tip);
@@ -291,6 +311,20 @@ export function applyTheme(theme) {
     if (themeColorMeta) {
         themeColorMeta.setAttribute('content', theme === 'dark' ? '#1a1a2e' : '#f0f4f8');
     }
+}
+
+/**
+ * 初始化 SVG 图标（替换 data-icon 标记的 span）
+ */
+function initIcons() {
+    document.querySelectorAll('[data-icon]').forEach(function(el) {
+        var name = el.getAttribute('data-icon');
+        if (name) {
+            var svgIcon = icon(name, 22);
+            el.textContent = '';
+            el.appendChild(svgIcon);
+        }
+    });
 }
 
 /**
@@ -348,9 +382,9 @@ function showInstallBanner() {
     banner.id = 'pwaInstallBanner';
     banner.style.cssText = 'position:fixed;bottom:70px;left:50%;transform:translateX(-50%);background:var(--bg-secondary);border:1px solid var(--border-color);border-radius:var(--radius-lg);padding:var(--space-3) var(--space-4);display:flex;align-items:center;gap:var(--space-3);z-index:500;box-shadow:0 4px 20px rgba(0,0,0,0.3);max-width:90vw;animation:slideUp 0.3s ease;';
 
-    const icon = document.createElement('span');
-    icon.textContent = '📱';
-    icon.style.fontSize = '24px';
+    const iconWrap = document.createElement('span');
+    iconWrap.appendChild(icon('smartphone', 20, 'var(--accent)'));
+    iconWrap.style.fontSize = '24px';
 
     const text = document.createElement('div');
     text.style.cssText = 'flex:1;';
@@ -379,14 +413,14 @@ function showInstallBanner() {
     });
 
     const closeBtn = document.createElement('span');
-    closeBtn.textContent = '✕';
+    closeBtn.textContent = '\u00d7';
     closeBtn.style.cssText = 'cursor:pointer;color:var(--text-tertiary);font-size:var(--text-lg);padding:4px;';
     closeBtn.addEventListener('click', function() {
         localStorage.setItem('byt_install_dismissed', 'true');
         hideInstallBanner();
     });
 
-    banner.appendChild(icon);
+    banner.appendChild(iconWrap);
     banner.appendChild(text);
     banner.appendChild(installBtn);
     banner.appendChild(closeBtn);

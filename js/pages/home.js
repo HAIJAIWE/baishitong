@@ -1,8 +1,9 @@
-// ==================== home.js - 首页 ====================
-// 百事通 v1.0
+// ==================== home.js - 首页（改版） ====================
+// 百事通 v1.0 - 参考 SaaS 风格简洁设计
 // 安全原则：所有用户输入和动态内容用 textContent 渲染
 
 import { clearContainer, createEl, debounce } from '../utils/ui.js';
+import { icon, categoryIconEl } from '../utils/icons.js';
 import { searchJobs, highlightKeyword, getSmartRecommendations, getRandomJobs } from '../utils/search.js';
 import { navigateTo, resetPageInit } from '../router.js';
 import { getRecentViewed, appState } from '../state.js';
@@ -26,77 +27,75 @@ window.initHome = initHome;
  * @param {HTMLElement} container
  */
 function renderHome(container) {
-    // 1. 搜索栏（sticky）
-    const searchSection = createSearchBar();
+    // 1. Hero 区域（标题 + 搜索）
+    const heroSection = createHeroSection();
 
     // 2. 快捷入口
     const quickSection = createQuickActions();
 
-    // 3. 热门推荐
+    // 3. 热门推荐（卡片网格）
     const recommendSection = createRecommendSection();
 
-    // 4. 八大类入口
+    // 4. 行业分类
     const categorySection = createCategoryGrid();
 
     // 5. 最近浏览
     const recentSection = createRecentSection();
 
-    container.appendChild(searchSection);
+    container.appendChild(heroSection);
     container.appendChild(quickSection);
     container.appendChild(recommendSection);
     container.appendChild(categorySection);
     container.appendChild(recentSection);
 }
 
-// ==================== 搜索栏 ====================
+// ==================== Hero 区域 ====================
 
-function createSearchBar() {
-    const section = createEl('div', 'home-search');
+function createHeroSection() {
+    const section = createEl('div', 'hero-section');
 
-    const box = createEl('div', 'search-box');
+    // 品牌标题
+    const title = createEl('h1', 'hero-title');
+    title.textContent = '百事通';
+    section.appendChild(title);
 
-    const input = createEl('input', 'input');
+    // 副标题
+    const subtitle = createEl('p', 'hero-subtitle');
+    subtitle.textContent = '探索 1669 个职业路径，掌握生活常识';
+    section.appendChild(subtitle);
+
+    // 搜索栏
+    const searchBox = createEl('div', 'hero-search-box');
+
+    const input = createEl('input', 'hero-search-input');
     input.type = 'text';
-    input.placeholder = '搜索职业...';
+    input.placeholder = '搜索职业、技能、行业...';
     input.setAttribute('aria-label', '搜索职业');
 
-    const iconWrap = createEl('div', '');
-    iconWrap.style.cssText = 'position:absolute;right:12px;top:50%;transform:translateY(-50%);display:flex;align-items:center;gap:8px;';
-    iconWrap.textContent = ''; // 清空
+    const searchBtn = createEl('button', 'hero-search-btn');
+    searchBtn.appendChild(icon('search', 18, '#fff'));
+    searchBtn.setAttribute('aria-label', '搜索');
 
-    const searchIcon = createEl('span', '');
-    searchIcon.textContent = '🔍';
-    searchIcon.style.cssText = 'font-size:16px;cursor:pointer;';
-
-    const clearBtn = createEl('span', '');
-    clearBtn.textContent = '✕';
-    clearBtn.style.cssText = 'font-size:14px;cursor:pointer;color:var(--text-tertiary);display:none;padding:4px;';
-
-    iconWrap.appendChild(searchIcon);
-    iconWrap.appendChild(clearBtn);
+    searchBox.appendChild(input);
+    searchBox.appendChild(searchBtn);
+    section.appendChild(searchBox);
 
     // 联想下拉
     const dropdown = createEl('div', 'search-dropdown');
+    searchBox.appendChild(dropdown);
 
-    box.appendChild(input);
-    box.appendChild(iconWrap);
-    box.appendChild(dropdown);
-    section.appendChild(box);
-
-    // === 搜索历史 ===
+    // 搜索历史
     const SEARCH_HISTORY_KEY = 'byt_search_history';
     const MAX_HISTORY = 10;
 
     function getSearchHistory() {
-        try {
-            return JSON.parse(localStorage.getItem(SEARCH_HISTORY_KEY) || '[]');
-        } catch(e) { return []; }
+        try { return JSON.parse(localStorage.getItem(SEARCH_HISTORY_KEY) || '[]'); }
+        catch(e) { return []; }
     }
 
     function saveSearchHistory(keyword) {
         if (!keyword) return;
         let history = getSearchHistory();
-        // 去重
         history = history.filter(function(h) { return h !== keyword; });
         history.unshift(keyword);
         if (history.length > MAX_HISTORY) history = history.slice(0, MAX_HISTORY);
@@ -105,128 +104,87 @@ function createSearchBar() {
 
     function showSearchHistory() {
         const history = getSearchHistory();
-        if (history.length === 0) {
-            dropdown.classList.remove('active');
-            return;
-        }
+        if (history.length === 0) { dropdown.classList.remove('active'); return; }
         clearContainer(dropdown);
-
-        // 标题
-        const header = createEl('div', '');
-        header.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:8px 12px;';
-        const title = createEl('span', '');
-        title.style.cssText = 'font-size:var(--text-xs);color:var(--text-tertiary);';
-        title.textContent = '搜索历史';
+        const header = createEl('div', 'search-dropdown-header');
+        const titleEl = createEl('span', '');
+        titleEl.style.cssText = 'font-size:12px;color:var(--text-tertiary);';
+        titleEl.textContent = '搜索历史';
         const clearAll = createEl('span', '');
-        clearAll.style.cssText = 'font-size:var(--text-xs);color:var(--text-tertiary);cursor:pointer;';
+        clearAll.style.cssText = 'font-size:12px;color:var(--accent);cursor:pointer;';
         clearAll.textContent = '清除';
         clearAll.addEventListener('click', function(e) {
             e.stopPropagation();
             try { localStorage.removeItem(SEARCH_HISTORY_KEY); } catch(e2) {}
             dropdown.classList.remove('active');
         });
-        header.appendChild(title);
+        header.appendChild(titleEl);
         header.appendChild(clearAll);
         dropdown.appendChild(header);
-
         history.forEach(function(kw) {
             const item = createEl('div', 'search-dropdown-item');
-            const icon = createEl('span', 'item-icon');
-            icon.textContent = '🕐';
+            const iconEl = icon('clock', 18, 'var(--text-tertiary)');
             const info = createEl('div', 'search-result-info');
             const name = createEl('div', 'item-name');
             name.textContent = kw;
             info.appendChild(name);
-            item.appendChild(icon);
+            item.appendChild(iconEl);
             item.appendChild(info);
             item.addEventListener('click', function() {
                 input.value = kw;
-                clearBtn.style.display = 'block';
                 doSearch();
             });
             dropdown.appendChild(item);
         });
-
         dropdown.classList.add('active');
     }
 
-    // 聚焦时显示搜索历史
-    input.addEventListener('focus', function() {
-        if (!input.value.trim()) {
-            showSearchHistory();
-        }
-    });
-
-    // 搜索事件（debounce 300ms）
     const doSearch = debounce(function() {
         const keyword = input.value.trim();
-        if (!keyword) {
-            showSearchHistory();
-            clearBtn.style.display = 'none';
-            return;
-        }
-        clearBtn.style.display = 'block';
-
+        if (!keyword) { showSearchHistory(); return; }
+        saveSearchHistory(keyword);
         const results = searchJobs(keyword, 8);
         clearContainer(dropdown);
-
         if (results.length === 0) {
             const emptyTip = createEl('div', 'search-empty');
             emptyTip.textContent = '未找到相关职业';
             dropdown.appendChild(emptyTip);
         } else {
-            // 保存搜索历史
-            saveSearchHistory(keyword);
-
             results.forEach(function(job) {
                 const item = createEl('div', 'search-dropdown-item');
                 item.setAttribute('data-job-id', job.id);
-
-                const icon = createEl('span', 'item-icon');
-                icon.textContent = job.icon || '💼';
-
+                const jobIcon = categoryIconEl(job.category || job.group, 36);
                 const info = createEl('div', 'search-result-info');
-
                 const name = createEl('div', 'item-name');
                 name.innerHTML = highlightKeyword(job.name || '', keyword);
-
                 const desc = createEl('div', 'item-desc');
                 desc.innerHTML = highlightKeyword(job.desc || '', keyword);
-
                 info.appendChild(name);
                 info.appendChild(desc);
-                item.appendChild(icon);
+                item.appendChild(jobIcon);
                 item.appendChild(info);
-
                 item.addEventListener('click', function() {
                     dropdown.classList.remove('active');
                     input.value = '';
-                    clearBtn.style.display = 'none';
                     window.openJobDetailModal(job.id);
                 });
-
                 dropdown.appendChild(item);
             });
         }
-
         dropdown.classList.add('active');
     }, 300);
 
     input.addEventListener('input', doSearch);
-
-    // 清除按钮
-    clearBtn.addEventListener('click', function() {
-        input.value = '';
-        dropdown.classList.remove('active');
-        clearBtn.style.display = 'none';
-        input.focus();
+    input.addEventListener('focus', function() {
+        if (!input.value.trim()) showSearchHistory();
     });
 
-    // 点击外部关闭下拉
+    searchBtn.addEventListener('click', function() {
+        if (input.value.trim()) doSearch();
+    });
+
     document.addEventListener('click', function(e) {
-        if (!box.contains(e.target)) {
-            dropdown.classList.remove('active');
-        }
+        if (!searchBox.contains(e.target)) dropdown.classList.remove('active');
     });
 
     return section;
@@ -235,29 +193,31 @@ function createSearchBar() {
 // ==================== 快捷入口 ====================
 
 function createQuickActions() {
-    const section = createEl('div', 'mb-6');
-
-    const grid = createEl('div', 'quick-actions');
+    const section = createEl('div', 'quick-section');
 
     const actions = [
-        { icon: '🔍', label: '职业探索', page: 'page-explore' },
-        { icon: '🤖', label: 'AI问答', page: 'page-ai' },
-        { icon: '⚖️', label: '职业对比', page: 'page-compare' },
-        { icon: '💡', label: '生活常识', page: 'page-tips' },
-        { icon: '💬', label: '社区', page: 'page-community' }
+        { icon: 'compass', label: '职业探索', page: 'page-explore', color: '#3B82F6' },
+        { icon: 'bot', label: 'AI问答', page: 'page-ai', color: '#8B5CF6' },
+        { icon: 'scale', label: '职业对比', page: 'page-compare', color: '#F59E0B' },
+        { icon: 'lightbulb', label: '生活常识', page: 'page-tips', color: '#10B981' },
+        { icon: 'messageCircle', label: '社区', page: 'page-community', color: '#EC4899' },
+        { icon: 'target', label: '每日签到', page: 'page-checkin', color: '#EF4444' },
+        { icon: 'puzzle', label: '职业测评', page: 'page-assessment', color: '#6366F1' }
     ];
 
+    const grid = createEl('div', 'quick-grid');
+
     actions.forEach(function(action) {
-        const item = createEl('div', 'quick-action-item');
-        item.setAttribute('data-page', action.page);
+        const item = createEl('div', 'quick-item');
 
-        const icon = createEl('span', 'action-icon');
-        icon.textContent = action.icon;
+        const iconWrap = createEl('div', 'quick-icon-wrap');
+        iconWrap.style.background = action.color + '15';
+        iconWrap.appendChild(icon(action.icon, 22, action.color));
 
-        const label = createEl('span', 'action-label');
+        const label = createEl('span', 'quick-label');
         label.textContent = action.label;
 
-        item.appendChild(icon);
+        item.appendChild(iconWrap);
         item.appendChild(label);
 
         item.addEventListener('click', function() {
@@ -271,21 +231,19 @@ function createQuickActions() {
     return section;
 }
 
-// ==================== 热门推荐 ====================
+// ==================== 热门推荐（卡片网格） ====================
 
-// 分类颜色映射
 const REC_CAT_COLORS = {
-    'gov_leader': '#E74C3C',
-    'professional': '#3498DB',
-    'clerk': '#9B59B6',
-    'service': '#E67E22',
-    'agriculture': '#27AE60',
-    'manufacturing': '#F39C12',
-    'military': '#2C3E50',
-    'other': '#1ABC9C'
+    'gov_leader': '#3B82F6',
+    'professional': '#8B5CF6',
+    'clerk': '#A855F7',
+    'service': '#F59E0B',
+    'agriculture': '#10B981',
+    'manufacturing': '#EF4444',
+    'military': '#6366F1',
+    'other': '#64748B'
 };
 
-// 分类名称映射
 const REC_CAT_NAMES = {
     'gov_leader': '负责人',
     'professional': '专业技术人员',
@@ -298,52 +256,44 @@ const REC_CAT_NAMES = {
 };
 
 function createRecommendSection() {
-    const section = createEl('div', 'mb-6');
+    const section = createEl('div', 'content-section');
 
-    // 标题行 + 换一批按钮
-    const titleRow = createEl('div', 'section-title');
-    const h2 = createEl('h2', '');
-    h2.textContent = '热门推荐';
+    // 标题行
+    const titleRow = createEl('div', 'section-header');
+    const h2 = createEl('h2', 'section-heading');
+    h2.textContent = '热门职业推荐';
     titleRow.appendChild(h2);
 
-    const refreshBtn = createEl('span', 'rec-refresh-btn');
-    refreshBtn.textContent = '换一批';
-    titleRow.appendChild(refreshBtn);
+    const subtitle = createEl('p', 'section-subheading');
+    subtitle.textContent = '探索不同职业的工作内容和发展方向';
+    titleRow.appendChild(subtitle);
     section.appendChild(titleRow);
 
-    // 横向滚动容器
-    const scrollWrap = createEl('div', 'recommend-scroll scroll-container');
+    // 卡片网格
+    const grid = createEl('div', 'rec-grid');
+    renderRecommendCards(grid);
+    section.appendChild(grid);
 
-    // 渲染推荐卡片
-    renderRecommendCards(scrollWrap);
-
-    // 换一批点击事件
-    refreshBtn.addEventListener('click', function() {
-        // 旋转动画
-        refreshBtn.classList.add('rec-refreshing');
-        setTimeout(function() {
-            refreshBtn.classList.remove('rec-refreshing');
-        }, 400);
-
-        // 清空并重新渲染
-        scrollWrap.innerHTML = '';
-        renderRecommendCards(scrollWrap);
+    // 查看更多
+    const moreLink = createEl('div', 'more-link');
+    moreLink.textContent = '查看更多职业 ';
+    moreLink.appendChild(icon('arrowRight', 14, 'var(--accent)'));
+    moreLink.addEventListener('click', function() {
+        navigateTo('page-explore');
     });
+    section.appendChild(moreLink);
 
-    section.appendChild(scrollWrap);
     return section;
 }
 
 function renderRecommendCards(container) {
     const recommendations = [];
     if (typeof getSmartRecommendations === 'function') {
-        const smart = getSmartRecommendations(8);
+        const smart = getSmartRecommendations(6);
         smart.forEach(function(r) { recommendations.push(r); });
     }
-
-    // 兜底：如果智能推荐没数据，用随机
     if (!recommendations.length) {
-        const randomJobs = getRandomJobs(8);
+        const randomJobs = getRandomJobs(6);
         randomJobs.forEach(function(job) {
             recommendations.push({ job: job, reason: '热门职业' });
         });
@@ -353,62 +303,48 @@ function renderRecommendCards(container) {
 
     recommendations.forEach(function(item) {
         const job = item.job;
-        const reason = item.reason || '热门职业';
         const subCat = categoryMap[job.id] || 'other';
 
-        // 找到所属大类
         let groupId = subCat;
         const groups = window.INDUSTRY_GROUPS || [];
         for (let i = 0; i < groups.length; i++) {
             const mids = groups[i].midCategories || [];
             for (let j = 0; j < mids.length; j++) {
-                if (mids[j].id === subCat) {
-                    groupId = groups[i].id;
-                    break;
-                }
+                if (mids[j].id === subCat) { groupId = groups[i].id; break; }
             }
             if (groupId !== subCat) break;
         }
 
-        const catColor = REC_CAT_COLORS[groupId] || '#95A5A6';
+        const catColor = REC_CAT_COLORS[groupId] || '#64748B';
         const catName = REC_CAT_NAMES[groupId] || '其他';
 
-        const card = createEl('div', 'recommend-card');
+        const card = createEl('div', 'rec-card');
 
-        // 顶部色条
-        const colorBar = createEl('div', 'rec-color-bar');
-        colorBar.style.background = catColor;
-        card.appendChild(colorBar);
+        // 职业图标
+        const cardIcon = categoryIconEl(job.category || job.group, 36);
+        card.appendChild(cardIcon);
 
-        // 图标 + 分类标签行
-        const topRow = createEl('div', 'rec-top-row');
-
-        const icon = createEl('div', 'rec-icon');
-        icon.textContent = job.icon || '💼';
-        topRow.appendChild(icon);
-
-        const catTag = createEl('span', 'rec-cat-tag');
-        catTag.textContent = catName;
-        catTag.style.background = catColor + '18';
-        catTag.style.color = catColor;
-        topRow.appendChild(catTag);
-
-        card.appendChild(topRow);
+        // 分类标签
+        const tag = createEl('span', 'rec-tag');
+        tag.textContent = catName;
+        tag.style.color = catColor;
+        tag.style.background = catColor + '12';
+        card.appendChild(tag);
 
         // 职业名称
-        const name = createEl('div', 'rec-name');
+        const name = createEl('h3', 'rec-card-name');
         name.textContent = job.name || '';
         card.appendChild(name);
 
-        // 推荐理由
-        const reasonEl = createEl('div', 'rec-reason');
-        reasonEl.textContent = reason;
-        card.appendChild(reasonEl);
-
         // 描述
-        const desc = createEl('div', 'rec-desc');
+        const desc = createEl('p', 'rec-card-desc');
         desc.textContent = job.desc || '';
         card.appendChild(desc);
+
+        // 底部箭头
+        const arrow = createEl('span', 'rec-card-arrow');
+        arrow.appendChild(icon('chevronRight', 16, catColor));
+        card.appendChild(arrow);
 
         card.addEventListener('click', function() {
             window.openJobDetailModal(job.id);
@@ -418,54 +354,50 @@ function renderRecommendCards(container) {
     });
 }
 
-// ==================== 八大类入口 ====================
+// ==================== 行业分类 ====================
 
 function createCategoryGrid() {
-    const section = createEl('div', 'mb-6');
+    const section = createEl('div', 'content-section');
 
-    // 标题
-    const titleRow = createEl('div', 'section-title');
-    const h2 = createEl('h2', '');
+    const titleRow = createEl('div', 'section-header');
+    const h2 = createEl('h2', 'section-heading');
     h2.textContent = '行业分类';
     titleRow.appendChild(h2);
+
+    const subtitle = createEl('p', 'section-subheading');
+    subtitle.textContent = '按行业大类浏览职业';
+    titleRow.appendChild(subtitle);
     section.appendChild(titleRow);
 
-    // 2x4 网格
-    const grid = createEl('div', 'category-grid');
+    const grid = createEl('div', 'cat-grid');
 
     const groups = window.INDUSTRY_GROUPS || [];
     groups.forEach(function(group) {
-        const card = createEl('div', 'category-card');
+        const card = createEl('div', 'cat-card');
 
-        const icon = createEl('span', 'cat-icon');
-        icon.textContent = group.icon || '📁';
+        const iconEl = icon('folder', 28, 'var(--text-secondary)');
 
-        const info = createEl('div', 'cat-info');
+        const info = createEl('div', 'cat-card-info');
 
-        const name = createEl('div', 'cat-name');
+        const name = createEl('div', 'cat-card-name');
         name.textContent = group.name || '';
-        name.style.cssText = 'display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;';
 
-        // 计算该大类下的职业数量
         let count = 0;
         const catMap = window.JOB_CATEGORY_MAP || {};
         const cats = group.categories || [];
         Object.keys(catMap).forEach(function(jobId) {
-            if (cats.indexOf(catMap[jobId]) !== -1) {
-                count++;
-            }
+            if (cats.indexOf(catMap[jobId]) !== -1) count++;
         });
 
-        const countEl = createEl('div', 'cat-count');
-        countEl.textContent = count + '个职业';
+        const countEl = createEl('div', 'cat-card-count');
+        countEl.textContent = count + ' 个职业';
 
         info.appendChild(name);
         info.appendChild(countEl);
-        card.appendChild(icon);
+        card.appendChild(iconEl);
         card.appendChild(info);
 
         card.addEventListener('click', function() {
-            // 跳转到 explore 页并选中该大类
             appState.selectedGroup = group.id;
             resetPageInit('page-explore');
             navigateTo('page-explore');
@@ -481,20 +413,16 @@ function createCategoryGrid() {
 // ==================== 最近浏览 ====================
 
 function createRecentSection() {
-    const section = createEl('div', 'mb-6');
-    section.style.cssText = 'padding-bottom:var(--space-8);';
+    const section = createEl('div', 'content-section');
 
     const recentList = getRecentViewed(5);
-
-    // 无数据时隐藏
     if (!recentList || recentList.length === 0) {
         section.style.display = 'none';
         return section;
     }
 
-    // 标题
-    const titleRow = createEl('div', 'section-title');
-    const h2 = createEl('h2', '');
+    const titleRow = createEl('div', 'section-header');
+    const h2 = createEl('h2', 'section-heading');
     h2.textContent = '最近浏览';
     titleRow.appendChild(h2);
     section.appendChild(titleRow);
@@ -507,37 +435,36 @@ function createRecentSection() {
 
         const row = createEl('div', 'recent-item');
 
-        const icon = createEl('span', 'recent-icon');
-        icon.textContent = job.icon || '💼';
+        const iconEl = categoryIconEl(job.category || job.group, 36);
+
+        const info = createEl('div', 'recent-info');
 
         const name = createEl('span', 'recent-name');
         name.textContent = job.name || '';
 
-        // 时间格式化
         let timeStr = '';
         const ts = item.timestamp;
         if (ts) {
             const d = new Date(ts);
             const now = new Date();
-            const diffMs = now - d;
-            const diffMin = Math.floor(diffMs / 60000);
-            if (diffMin < 1) {
-                timeStr = '刚刚';
-            } else if (diffMin < 60) {
-                timeStr = diffMin + '分钟前';
-            } else if (diffMin < 1440) {
-                timeStr = Math.floor(diffMin / 60) + '小时前';
-            } else {
-                timeStr = Math.floor(diffMin / 1440) + '天前';
-            }
+            const diffMin = Math.floor((now - d) / 60000);
+            if (diffMin < 1) timeStr = '刚刚';
+            else if (diffMin < 60) timeStr = diffMin + '分钟前';
+            else if (diffMin < 1440) timeStr = Math.floor(diffMin / 60) + '小时前';
+            else timeStr = Math.floor(diffMin / 1440) + '天前';
         }
 
         const time = createEl('span', 'recent-time');
         time.textContent = timeStr;
 
-        row.appendChild(icon);
-        row.appendChild(name);
-        row.appendChild(time);
+        info.appendChild(name);
+        info.appendChild(time);
+        row.appendChild(iconEl);
+        row.appendChild(info);
+
+        const arrow = icon('chevronRight', 18, 'var(--text-tertiary)');
+
+        row.appendChild(arrow);
 
         row.addEventListener('click', function() {
             window.openJobDetailModal(job.id);

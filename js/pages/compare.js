@@ -3,6 +3,7 @@
 // 安全原则：所有动态内容用 textContent 渲染
 
 import { clearContainer, createEl, showConfirm, showToast, showModal, hideModal, debounce } from '../utils/ui.js';
+import { icon, categoryIconEl } from '../utils/icons.js';
 import { clearCompare, getCompareSlots, removeFromCompare, getFavorites, addToCompare, checkAchievement, getCurrentModel } from '../state.js';
 import { searchJobs } from '../utils/search.js';
 import { getJob } from '../data-loader.js';
@@ -73,13 +74,12 @@ function createCompareSlots() {
 
         if (slots[i]) {
             // 已填充
-            const icon = createEl('span', 'slot-icon');
-            icon.textContent = slots[i].icon || '💼';
+            const iconEl = categoryIconEl(slots[i].category || slots[i].group, 44);
 
             const name = createEl('span', 'slot-name');
             name.textContent = slots[i].name || '';
 
-            slot.appendChild(icon);
+            slot.appendChild(iconEl);
             slot.appendChild(name);
 
             // 点击移除
@@ -183,8 +183,7 @@ function showJobPicker() {
                 item.classList.remove('active');
             });
 
-            const icon = createEl('span', 'picker-icon');
-            icon.textContent = job.icon || '💼';
+            const iconEl = categoryIconEl(job.category || job.group, 44);
 
             const name = createEl('span', 'picker-name');
             name.textContent = job.name || '';
@@ -195,7 +194,7 @@ function showJobPicker() {
             const addIcon = createEl('span', 'picker-add');
             addIcon.textContent = '+';
 
-            item.appendChild(icon);
+            item.appendChild(iconEl);
             item.appendChild(name);
             item.appendChild(addIcon);
 
@@ -303,7 +302,8 @@ function createCompareTable() {
     const aiSection = createEl('div', 'compare-ai-section');
 
     const aiBtn = createEl('button', 'btn btn-primary btn-lg btn-full');
-    aiBtn.textContent = '🤖 AI 对比分析';
+    aiBtn.appendChild(icon('bot', 16));
+    aiBtn.appendChild(document.createTextNode(' AI 对比分析'));
 
     aiBtn.addEventListener('click', function() {
         generateAiCompare(jobs, wrap);

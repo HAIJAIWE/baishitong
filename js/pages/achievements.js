@@ -3,6 +3,7 @@
 // 安全原则：所有动态内容用 textContent 渲染
 
 import { clearContainer, createEl } from '../utils/ui.js';
+import { icon } from '../utils/icons.js';
 import { getUnlockedAchievements } from '../state.js';
 
 /**
@@ -30,7 +31,8 @@ function renderAchievements(container) {
     const header = createEl('div', 'achievements-header');
 
     const title = createEl('h2', '');
-    title.textContent = '🏆 成就';
+    title.appendChild(icon('trophy', 20));
+    title.appendChild(document.createTextNode(' 成就'));
 
     const count = createEl('div', 'achievements-count');
     count.textContent = '已解锁 ' + unlocked.length + '/' + achievements.length;
@@ -43,7 +45,7 @@ function renderAchievements(container) {
     if (achievements.length === 0) {
         const empty = createEl('div', 'empty-state');
         const emptyIcon = createEl('div', 'empty-icon');
-        emptyIcon.textContent = '🏆';
+        emptyIcon.appendChild(icon('trophy', 48, 'var(--text-tertiary)'));
         const emptyTitle = createEl('div', 'empty-title');
         emptyTitle.textContent = '暂无成就';
         const emptyDesc = createEl('div', 'empty-desc');
@@ -75,8 +77,8 @@ function renderAchievements(container) {
 function createAchievementCard(ach, isUnlocked) {
     const card = createEl('div', 'achievement-card' + (isUnlocked ? ' unlocked' : ' locked'));
 
-    const icon = createEl('div', 'achievement-icon');
-    icon.textContent = ach.icon || '🏆';
+    const iconEl = createEl('div', 'achievement-icon');
+    iconEl.appendChild(icon(ach.icon || 'trophy', 24, isUnlocked ? 'var(--accent)' : 'var(--text-tertiary)'));
 
     const name = createEl('div', 'achievement-name');
     name.textContent = ach.name || '';
@@ -85,9 +87,15 @@ function createAchievementCard(ach, isUnlocked) {
     desc.textContent = ach.desc || '';
 
     const condition = createEl('div', 'achievement-condition');
-    condition.textContent = isUnlocked ? '✅ 已解锁' : '🔒 未解锁';
+    if (isUnlocked) {
+        condition.appendChild(icon('checkCircle', 14, 'var(--accent)'));
+        condition.appendChild(document.createTextNode(' 已解锁'));
+    } else {
+        condition.appendChild(icon('xCircle', 14, 'var(--text-tertiary)'));
+        condition.appendChild(document.createTextNode(' 未解锁'));
+    }
 
-    card.appendChild(icon);
+    card.appendChild(iconEl);
     card.appendChild(name);
     card.appendChild(desc);
     card.appendChild(condition);

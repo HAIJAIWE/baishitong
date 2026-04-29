@@ -1,11 +1,13 @@
 // ==================== state.js - 应用状态管理 ====================
 // 百事通 v1.0 - 面向普通用户的职业探索应用
 
+import { icon } from './utils/icons.js';
+
 export const STORAGE_PREFIX = 'byt_';
 
 // 默认状态
 const defaultState = {
-    theme: 'dark',            // 'dark' | 'light'
+    theme: 'light',            // 'dark' | 'light'
     deviceMode: 'mobile',     // 'mobile' | 'desktop'
     currentModel: 'gpt-4o-mini', // 当前AI模型（Puter.js 免费）
     favorites: [],            // 收藏的职业ID列表 ['job_001', 'job_002']
@@ -21,6 +23,15 @@ const defaultState = {
     },
     achievements: {
         unlocked: []  // 已解锁的成就ID列表
+    },
+    checkin: {
+        points: 0,              // 当前积分
+        totalPoints: 0,         // 累计获得积分
+        checkinDates: [],       // 签到日期列表 ['2026-04-28', ...]
+        streak: 0,              // 当前连续签到天数
+        maxStreak: 0,           // 历史最长连续签到
+        lastCheckin: null,      // 最后签到日期
+        level: 1                // 用户等级
     }
 };
 
@@ -48,6 +59,10 @@ export function loadState() {
                 },
                 achievements: {
                     unlocked: (parsed.achievements && parsed.achievements.unlocked) ? parsed.achievements.unlocked : []
+                },
+                checkin: {
+                    ...defaultState.checkin,
+                    ...(parsed.checkin || {})
                 }
             };
         }
@@ -409,6 +424,185 @@ export function setDeviceMode(mode) {
     saveState();
 }
 
+// ==================== 签到与积分管理 ====================
+
+// 等级配置
+const LEVEL_CONFIG = [
+    { level: 1, name: '新手探索者', minPoints: 0, icon: 'sprout' },
+    { level: 2, name: '职业学徒', minPoints: 50, icon: 'bookOpen' },
+    { level: 3, name: '行业达人', minPoints: 200, icon: 'star' },
+    { level: 4, name: '职场精英', minPoints: 500, icon: 'sun' },
+    { level: 5, name: '百事通大师', minPoints: 1000, icon: 'crown' },
+    { level: 6, name: '传奇智者', minPoints: 2000, icon: 'sparkles' }
+];
+
+// 积分奖励配置
+const POINT_REWARDS = {
+    dailyCheckin: 10,       // 每日签到
+    streakBonus: [0, 0, 5, 10, 15, 20, 30, 50], // 连续签到奖励 [0天,1天,2天,3天,4天,5天,6天,7天+]
+    exploreJob: 5,          // 探索职业
+    favoriteJob: 2,         // 收藏职业
+    aiQuestion: 3,          // AI提问
+    communityPost: 8,       // 发帖
+    communityComment: 3,    // 评论
+    achievementUnlock: 20,  // 解锁成就
+    compareJobs: 5          // 对比职业
+};
+
+/**
+ * 获取等级配置
+ * @returns {Array}
+ */
+export function getLevelConfig() {
+    return LEVEL_CONFIG.slice();
+}
+
+/**
+ * 获取积分奖励配置
+ * @returns {Object}
+ */
+export function getPointRewards() {
+    return Object.assign({}, POINT_REWARDS);
+}
+
+/**
+ * 根据积分计算等级
+ * @param {number} points
+ * @returns {Object} 等级信息
+ */
+export function calcLevel(points) {
+    let current = LEVEL_CONFIG[0];
+    for (let i = LEVEL_CONFIG.length - 1; i >= 0; i--) {
+        if (points >= LEVEL_CONFIG[i].minPoints) {
+            current = LEVEL_CONFIG[i];
+            break;
+        }
+    }
+    return current;
+}
+
+/**
+ * 获取签到信息
+ * @returns {Object}
+ */
+export function getCheckinInfo() {
+    return Object.assign({}, appState.checkin);
+}
+
+/**
+ * 检查今天是否已签到
+ * @returns {boolean}
+ */
+export function hasCheckedInToday() {
+    const today = new Date().toISOString().split('T')[0];
+    return (appState.checkin.checkinDates || []).indexOf(today) !== -1;
+}
+
+/**
+ * 执行签到
+ * @returns {Object} { success, points, streak, bonus, message }
+ */
+export function doCheckin() {
+    const today = new Date().toISOString().split('T')[0];
+
+    // 已签到
+    if (hasCheckedInToday()) {
+        return { success: false, points: 0, streak: 0, bonus: 0, message: '今天已经签到过了' };
+    }
+
+    // 计算连续签到
+    const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+    let newStreak = 1;
+    if (appState.checkin.lastCheckin === yesterday) {
+        newStreak = (appState.checkin.streak || 0) + 1;
+    }
+
+    // 计算积分
+    let basePoints = POINT_REWARDS.dailyCheckin;
+    let bonusPoints = 0;
+    const streakIndex = Math.min(newStreak, POINT_REWARDS.streakBonus.length - 1);
+    bonusPoints = POINT_REWARDS.streakBonus[streakIndex] || 0;
+
+    const totalEarned = basePoints + bonusPoints;
+
+    // 更新状态
+    appState.checkin.checkinDates.push(today);
+    appState.checkin.streak = newStreak;
+    appState.checkin.lastCheckin = today;
+    appState.checkin.points += totalEarned;
+    appState.checkin.totalPoints += totalEarned;
+    if (newStreak > (appState.checkin.maxStreak || 0)) {
+        appState.checkin.maxStreak = newStreak;
+    }
+
+    // 更新等级
+    const newLevel = calcLevel(appState.checkin.points);
+    appState.checkin.level = newLevel.level;
+
+    saveState();
+
+    // 构建消息
+    let message = '签到成功！+' + totalEarned + '积分';
+    if (bonusPoints > 0) {
+        message += '（含连续' + newStreak + '天奖励+' + bonusPoints + '）';
+    }
+
+    return {
+        success: true,
+        points: totalEarned,
+        streak: newStreak,
+        bonus: bonusPoints,
+        level: newLevel,
+        message: message
+    };
+}
+
+/**
+ * 增加积分（用于其他行为奖励）
+ * @param {string} action - 行为类型（对应 POINT_REWARDS 的 key）
+ * @returns {number} 获得的积分
+ */
+export function addPoints(action) {
+    const reward = POINT_REWARDS[action];
+    if (!reward) return 0;
+
+    appState.checkin.points += reward;
+    appState.checkin.totalPoints += reward;
+
+    const newLevel = calcLevel(appState.checkin.points);
+    appState.checkin.level = newLevel.level;
+
+    saveState();
+    return reward;
+}
+
+/**
+ * 消耗积分
+ * @param {number} amount
+ * @returns {boolean} 是否成功
+ */
+export function spendPoints(amount) {
+    if (appState.checkin.points < amount) return false;
+    appState.checkin.points -= amount;
+    saveState();
+    return true;
+}
+
+/**
+ * 获取签到日历数据（当月）
+ * @param {number} year
+ * @param {number} month
+ * @returns {Array} 已签到的日期数组
+ */
+export function getCheckinCalendar(year, month) {
+    const prefix = year + '-' + String(month + 1).padStart(2, '0');
+    return (appState.checkin.checkinDates || []).filter(function(d) {
+        return d.indexOf(prefix) === 0;
+    }).map(function(d) {
+        return parseInt(d.split('-')[2], 10);
+    });
+}
+
 // ==================== 重置状态 ====================
 
 /**
@@ -465,7 +659,10 @@ export function unlockAchievement(id) {
 
     // 延迟引用 showToast，避免与 ui.js 的循环依赖
     if (typeof window.showToast === 'function') {
-        window.showToast('🏆 成就解锁：' + achName, 'success', 4000);
+        const msgEl = document.createElement('span');
+        msgEl.appendChild(icon('trophy', 16, 'var(--accent)'));
+        msgEl.appendChild(document.createTextNode(' 成就解锁：' + achName));
+        window.showToast(msgEl, 'success', 4000);
     }
 }
 

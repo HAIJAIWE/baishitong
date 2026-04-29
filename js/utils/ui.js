@@ -27,8 +27,12 @@ export function showToast(message, type, duration) {
     const toast = document.createElement('div');
     toast.className = 'toast toast-' + type;
 
-    // 安全渲染：使用 textContent 防止 XSS
-    toast.textContent = message;
+    // 安全渲染：使用 textContent 防止 XSS；支持 HTMLElement
+    if (message instanceof HTMLElement) {
+        toast.appendChild(message);
+    } else {
+        toast.textContent = message;
+    }
 
     container.appendChild(toast);
 

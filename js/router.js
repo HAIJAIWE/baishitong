@@ -32,6 +32,12 @@ const pageInitMap = {
     },
     'page-achievements': function() {
         if (typeof window.initAchievements === 'function') window.initAchievements();
+    },
+    'page-checkin': function() {
+        if (typeof window.initCheckin === 'function') window.initCheckin();
+    },
+    'page-assessment': function() {
+        if (typeof window.initAssessment === 'function') window.initAssessment();
     }
 };
 

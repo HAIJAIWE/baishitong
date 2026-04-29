@@ -3,6 +3,7 @@
 // 安全原则：所有动态内容用 textContent 渲染
 
 import { clearContainer, createEl, showConfirm, showToast } from '../utils/ui.js';
+import { icon, categoryIconEl } from '../utils/icons.js';
 import { getFavorites, toggleFavorite, checkAchievement } from '../state.js';
 import { getJob } from '../data-loader.js';
 import { navigateTo } from '../router.js';
@@ -44,8 +45,8 @@ function renderFavorites(container) {
     if (favorites.length === 0) {
         const empty = createEl('div', 'empty-state');
 
-        const icon = createEl('div', 'empty-icon');
-        icon.textContent = '⭐';
+        const iconEl = createEl('div', 'empty-icon');
+        iconEl.appendChild(icon('star', 20, '#F59E0B'));
 
         const text = createEl('div', 'empty-title');
         text.textContent = '还没有收藏任何职业';
@@ -60,7 +61,7 @@ function renderFavorites(container) {
             navigateTo('page-explore');
         });
 
-        empty.appendChild(icon);
+        empty.appendChild(iconEl);
         empty.appendChild(text);
         empty.appendChild(desc);
         empty.appendChild(btn);
@@ -94,8 +95,7 @@ function createFavoriteCard(job, index) {
     card.style.position = 'relative';
     card.style.overflow = 'hidden';
 
-    const icon = createEl('div', 'job-icon');
-    icon.textContent = job.icon || '💼';
+    const iconEl = categoryIconEl(job.category || job.group, 44);
 
     const info = createEl('div', 'job-info');
 
@@ -114,7 +114,7 @@ function createFavoriteCard(job, index) {
         salary = job.overview.salary;
     }
 
-    card.appendChild(icon);
+    card.appendChild(iconEl);
     card.appendChild(info);
 
     if (salary) {

@@ -7,6 +7,27 @@ import { clearContainer, createEl, showToast, showConfirm } from '../utils/ui.js
 import { checkAchievement } from '../state.js';
 import { isLeanCloudConfigured, fetchPosts, createPost, deletePost, toggleLike, fetchComments, addComment, fetchChatMessages, sendChatMessage } from '../leancloud-service.js';
 import { getCurrentUser } from '../auth.js';
+import { icon } from '../utils/icons.js';
+
+/**
+ * 渲染头像：使用 icon() 将图标名转换为 SVG 图标
+ * @param {HTMLElement} avatarEl - 头像容器元素
+ * @param {string} avatarName - 图标名称
+ * @param {string} [color] - 图标颜色
+ */
+function renderAvatar(avatarEl, avatarName, color) {
+    avatarEl.textContent = '';
+    if (avatarName) {
+        var svg = icon(avatarName, 20, color);
+        if (svg && svg.tagName === 'svg') {
+            avatarEl.appendChild(svg);
+        } else {
+            avatarEl.textContent = avatarName.charAt(0).toUpperCase();
+        }
+    } else {
+        avatarEl.textContent = '👤';
+    }
+}
 
 const COMMUNITY_POSTS_KEY = 'byt_community_posts';
 const COMMUNITY_CHAT_KEY = 'byt_community_chat';
@@ -18,76 +39,81 @@ let currentPostId = null; // 当前查看的帖子ID
 const defaultPosts = [
     {
         id: 'p1',
-        avatar: '🧑‍💼',
+        avatar: 'user',
+        avatarColor: '#3B82F6',
         username: '职场老王',
         time: Date.now() - 3600000 * 5,
         title: '面试时如何回答"你的缺点是什么"',
         content: '这个问题几乎是面试必问的。关键不是真的暴露致命缺点，而是展示自我认知和改进能力。\n\n建议思路：\n1. 选择一个真实的但不影响核心能力的缺点\n2. 说明你已经意识到了这个问题\n3. 重点描述你正在采取的改进措施\n\n例如："我有时候过于关注细节，但最近我学会了在项目中设定明确的优先级，确保在规定时间内完成任务。"',
         likes: 42,
         comments: [
-            { avatar: '👩‍🎓', username: '小李同学', time: Date.now() - 3600000 * 3, text: '学到了！之前面试总是不知道怎么回答这个问题' },
-            { avatar: '👨‍💻', username: '技术达人', time: Date.now() - 3600000 * 1, text: '我觉得诚实回答比模板化回答更好，面试官能看出来的' }
+            { avatar: 'user', avatarColor: '#A855F7', username: '小李同学', time: Date.now() - 3600000 * 3, text: '学到了！之前面试总是不知道怎么回答这个问题' },
+            { avatar: 'user', avatarColor: '#10B981', username: '技术达人', time: Date.now() - 3600000 * 1, text: '我觉得诚实回答比模板化回答更好，面试官能看出来的' }
         ]
     },
     {
         id: 'p2',
-        avatar: '👩‍🏫',
+        avatar: 'user',
+        avatarColor: '#EC4899',
         username: '教育观察者',
         time: Date.now() - 3600000 * 12,
         title: '终身学习时代，学历还重要吗',
         content: '学历在求职中的"敲门砖"作用依然存在，但越来越多的企业开始重视实际能力。特别是在互联网、设计、自媒体等领域，作品集和项目经验往往比学历更有说服力。\n\n不过，学历在以下场景仍然很重要：\n- 国企和事业单位招聘\n- 大厂校招的简历筛选\n- 考公考编的硬性要求\n\n所以，与其纠结学历重不重要，不如思考如何在现有条件下最大化自己的竞争力。',
         likes: 38,
         comments: [
-            { avatar: '🧑‍🎓', username: '在读研究生', time: Date.now() - 3600000 * 8, text: '确实，学历是门槛但不是天花板' }
+            { avatar: 'user', avatarColor: '#3B82F6', username: '在读研究生', time: Date.now() - 3600000 * 8, text: '确实，学历是门槛但不是天花板' }
         ]
     },
     {
         id: 'p3',
-        avatar: '👨‍🍳',
+        avatar: 'user',
+        avatarColor: '#F59E0B',
         username: '转行达人',
         time: Date.now() - 3600000 * 24,
         title: '从厨师到程序员：我的转行经历',
         content: '我在餐饮行业工作了8年，30岁那年决定转行学编程。很多人觉得不可能，但我用了两年时间完成了转型。\n\n我的经验总结：\n1. 先确定方向，我选了前端开发因为入门相对友好\n2. 利用每天下班后的2-3小时学习\n3. 做了3个完整项目作为作品集\n4. 从外包公司起步，积累经验\n\n现在我在一家中型互联网公司工作，薪资比做厨师时翻了3倍。转行不难，难的是坚持。',
         likes: 67,
         comments: [
-            { avatar: '👩‍🔬', username: '迷茫中的我', time: Date.now() - 3600000 * 20, text: '太励志了！我也在考虑转行，请问您是怎么学习前端的？' },
-            { avatar: '👨‍🍳', username: '转行达人', time: Date.now() - 3600000 * 18, text: '主要是看免费教程，B站上有很多优质的课程，然后多动手做项目' },
-            { avatar: '🧑‍💻', username: '前端小白', time: Date.now() - 3600000 * 10, text: '同为转行者，加油！' }
+            { avatar: 'user', avatarColor: '#A855F7', username: '迷茫中的我', time: Date.now() - 3600000 * 20, text: '太励志了！我也在考虑转行，请问您是怎么学习前端的？' },
+            { avatar: 'user', avatarColor: '#F59E0B', username: '转行达人', time: Date.now() - 3600000 * 18, text: '主要是看免费教程，B站上有很多优质的课程，然后多动手做项目' },
+            { avatar: 'user', avatarColor: '#10B981', username: '前端小白', time: Date.now() - 3600000 * 10, text: '同为转行者，加油！' }
         ]
     },
     {
         id: 'p4',
-        avatar: '👩‍⚕️',
+        avatar: 'user',
+        avatarColor: '#EF4444',
         username: '健康生活家',
         time: Date.now() - 3600000 * 48,
         title: '上班族如何保持健康的工作节奏',
         content: '久坐是上班族最大的健康杀手。分享几个我实践过的方法：\n\n1. 番茄工作法：每25分钟站起来活动5分钟\n2. 桌面高度调整：显示器上沿与眼睛齐平\n3. 每天至少走8000步，午休时出去走走\n4. 准备健康零食，避免外卖和含糖饮料\n5. 晚上11点前放下手机，保证7小时睡眠\n\n坚持了一个月后，颈椎痛明显缓解，下午也不会犯困了。健康是革命的本钱，别等出了问题才重视。',
         likes: 55,
         comments: [
-            { avatar: '🧑‍💼', username: '久坐族', time: Date.now() - 3600000 * 36, text: '番茄工作法真的有用，推荐大家试试' }
+            { avatar: 'user', avatarColor: '#3B82F6', username: '久坐族', time: Date.now() - 3600000 * 36, text: '番茄工作法真的有用，推荐大家试试' }
         ]
     },
     {
         id: 'p5',
-        avatar: '🧑‍🎨',
+        avatar: 'user',
+        avatarColor: '#8B5CF6',
         username: '理财小能手',
         time: Date.now() - 3600000 * 72,
         title: '刚毕业如何开始理财',
         content: '理财不是有钱了才开始的事，而是从第一笔工资就要养成的习惯。\n\n新手理财建议：\n1. 先存后花：工资到账先转20%到储蓄账户\n2. 记账：用APP记录每笔支出，了解钱花在哪了\n3. 建立紧急备用金：至少存够3-6个月的生活费\n4. 学习基础知识：了解基金、定投等基本概念\n5. 不要跟风投资：不懂的东西不要碰\n\n记住，理财的第一步不是赚钱，而是控制支出。量入为出是所有财富积累的基础。',
         likes: 89,
         comments: [
-            { avatar: '👩‍🎓', username: '应届毕业生', time: Date.now() - 3600000 * 60, text: '正好需要这个！之前完全没有理财概念' },
-            { avatar: '👨‍💼', username: '职场新人', time: Date.now() - 3600000 * 48, text: '记账真的很重要，我记了三个月才发现自己奶茶钱花了好几千' }
+            { avatar: 'user', avatarColor: '#A855F7', username: '应届毕业生', time: Date.now() - 3600000 * 60, text: '正好需要这个！之前完全没有理财概念' },
+            { avatar: 'user', avatarColor: '#3B82F6', username: '职场新人', time: Date.now() - 3600000 * 48, text: '记账真的很重要，我记了三个月才发现自己奶茶钱花了好几千' }
         ]
     }
 ];
 
 const defaultChatMessages = [
-    { avatar: '😊', username: '小明', time: Date.now() - 3600000 * 2, text: '大家好！有人了解数据分析这个方向吗？' },
-    { avatar: '📊', username: '数据分析师', time: Date.now() - 3600000 * 1.5, text: '我是做数据分析的，有什么想了解的可以问我' },
-    { avatar: '😊', username: '小明', time: Date.now() - 3600000, text: '需要学哪些工具和技能呢？' },
-    { avatar: '📊', username: '数据分析师', time: Date.now() - 3600000 * 0.5, text: 'Excel是基础，然后学SQL、Python，工具方面Tableau或Power BI至少会一个' },
-    { avatar: '🤔', username: '好奇宝宝', time: Date.now() - 3600000 * 0.2, text: '零基础转行数据分析大概需要多久？' }
+    { avatar: 'user', avatarColor: '#F59E0B', username: '小明', time: Date.now() - 3600000 * 2, text: '大家好！有人了解数据分析这个方向吗？' },
+    { avatar: 'user', avatarColor: '#3B82F6', username: '数据分析师', time: Date.now() - 3600000 * 1.5, text: '我是做数据分析的，有什么想了解的可以问我' },
+    { avatar: 'user', avatarColor: '#F59E0B', username: '小明', time: Date.now() - 3600000, text: '需要学哪些工具和技能呢？' },
+    { avatar: 'user', avatarColor: '#3B82F6', username: '数据分析师', time: Date.now() - 3600000 * 0.5, text: 'Excel是基础，然后学SQL、Python，工具方面Tableau或Power BI至少会一个' },
+    { avatar: 'user', avatarColor: '#10B981', username: '好奇宝宝', time: Date.now() - 3600000 * 0.2, text: '零基础转行数据分析大概需要多久？' }
 ];
 
 /**
@@ -179,10 +205,10 @@ function getChatUsername() {
     const nouns = ['探索者', '学习者', '追梦人', '旅行家', '思考者', '实践者', '创造者', '冒险家'];
     const adj = adjectives[Math.floor(Math.random() * adjectives.length)];
     const noun = nouns[Math.floor(Math.random() * nouns.length)];
-    const emojis = ['😊', '🌟', '🎯', '🚀', '💡', '🔥', '✨', '🌈'];
-    const emoji = emojis[Math.floor(Math.random() * emojis.length)];
+    const reactions = ['smile', 'star', 'target', 'rocket', 'lightbulb', 'flame', 'sparkles', 'rainbow'];
+    const avatarIcon = reactions[Math.floor(Math.random() * reactions.length)];
 
-    name = emoji + adj + noun;
+    name = avatarIcon + adj + noun;
     localStorage.setItem(CHAT_USERNAME_KEY, name);
     return name;
 }
@@ -322,13 +348,13 @@ async function renderKnowledgeTab(container) {
 
     if (posts.length === 0) {
         const empty = createEl('div', 'empty-state');
-        const icon = createEl('div', 'empty-icon');
-        icon.textContent = '📝';
+        const emptyIcon = createEl('div', 'empty-icon');
+        emptyIcon.appendChild(icon('edit', 18));
         const text = createEl('div', 'empty-title');
         text.textContent = '还没有知识帖子';
         const desc = createEl('div', 'empty-desc');
         desc.textContent = '点击右下角按钮发布第一篇帖子吧';
-        empty.appendChild(icon);
+        empty.appendChild(emptyIcon);
         empty.appendChild(text);
         empty.appendChild(desc);
         container.appendChild(empty);
@@ -356,7 +382,7 @@ function createPostCard(post, index) {
     const header = createEl('div', 'post-header');
 
     const avatar = createEl('div', 'post-avatar');
-    avatar.textContent = post.avatar || '👤';
+    renderAvatar(avatar, post.avatar, post.avatarColor);
 
     const userInfo = createEl('div', 'post-user-info');
 
@@ -387,7 +413,7 @@ function createPostCard(post, index) {
 
     const likeBtn = createEl('div', 'post-action');
     const likeIcon = createEl('span', '');
-    likeIcon.textContent = '👍';
+    likeIcon.appendChild(icon('thumbsUp', 16));
     const likeCount = createEl('span', '');
     likeCount.textContent = (post.likes || 0) + '';
     likeBtn.appendChild(likeIcon);
@@ -395,7 +421,7 @@ function createPostCard(post, index) {
 
     const commentBtn = createEl('div', 'post-action');
     const commentIcon = createEl('span', '');
-    commentIcon.textContent = '💬';
+    commentIcon.appendChild(icon('messageCircle', 16));
     const commentCount = createEl('span', '');
     // LeanCloud 使用 commentCount，localStorage 使用 comments.length
     commentCount.textContent = (post.commentCount != null ? post.commentCount : (post.comments ? post.comments.length : 0)) + '';
@@ -542,7 +568,7 @@ async function renderPostDetail(container, postId) {
     const header = createEl('div', 'post-header');
 
     const avatar = createEl('div', 'post-avatar');
-    avatar.textContent = post.avatar || '👤';
+    renderAvatar(avatar, post.avatar, post.avatarColor);
 
     const userInfo = createEl('div', 'post-user-info');
 
@@ -574,7 +600,7 @@ async function renderPostDetail(container, postId) {
 
     const likeBtn = createEl('div', 'post-action');
     const likeIcon = createEl('span', '');
-    likeIcon.textContent = '👍';
+    likeIcon.appendChild(icon('thumbsUp', 16));
     const likeCount = createEl('span', '');
     likeCount.textContent = (post.likes || 0) + ' 赞';
     likeBtn.appendChild(likeIcon);
@@ -634,7 +660,7 @@ async function renderPostDetail(container, postId) {
         const deleteBtn = createEl('div', 'post-action');
         deleteBtn.style.color = 'var(--danger)';
         const deleteIcon = createEl('span', '');
-        deleteIcon.textContent = '🗑️';
+        deleteIcon.appendChild(icon('trash2', 16));
         const deleteText = createEl('span', '');
         deleteText.textContent = '删除';
         deleteBtn.appendChild(deleteIcon);
@@ -721,7 +747,7 @@ async function renderPostDetail(container, postId) {
 
         const effectivePostId = post.objectId || postId;
         const username = getEffectiveUsername();
-        const avatar = '😊';
+        const avatar = 'user';
 
         if (useLeanCloud) {
             const result = await addComment(effectivePostId, text, username, avatar);
@@ -783,7 +809,7 @@ function createCommentItem(comment) {
     const item = createEl('div', 'comment-item');
 
     const avatar = createEl('div', 'comment-avatar');
-    avatar.textContent = comment.avatar || '👤';
+    renderAvatar(avatar, comment.avatar, comment.avatarColor);
 
     const body = createEl('div', 'comment-body');
 
@@ -872,7 +898,7 @@ function showNewPostForm(container) {
 
         const useLeanCloud = isLeanCloudConfigured();
         const username = getEffectiveUsername();
-        const avatar = '😊';
+        const avatar = 'user';
 
         if (useLeanCloud) {
             const newPost = await createPost(titleVal, contentVal, username, avatar);
@@ -980,7 +1006,7 @@ async function renderChatTab(container) {
         if (!text) return;
 
         const effectiveUsername = getEffectiveUsername();
-        const avatar = '😊';
+        const avatar = 'user';
 
         if (useLeanCloud) {
             const result = await sendChatMessage(text, effectiveUsername, avatar);
@@ -1059,7 +1085,7 @@ function createChatBubble(msg, isSelf) {
     const bubble = createEl('div', 'chat-bubble' + (isSelf ? ' self' : ''));
 
     const avatar = createEl('div', 'chat-bubble-avatar');
-    avatar.textContent = msg.avatar || '👤';
+    renderAvatar(avatar, msg.avatar, msg.avatarColor);
 
     const body = createEl('div', 'chat-bubble-body');
 

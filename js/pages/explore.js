@@ -3,6 +3,7 @@
 // 安全原则：所有用户输入和动态内容用 textContent 渲染
 
 import { clearContainer, createEl, throttle, showToast, showModal, hideModal, escapeHtml } from '../utils/ui.js';
+import { icon, categoryIconEl, getCategoryIcon } from '../utils/icons.js';
 import { appState } from '../state.js';
 import { addRecentView, markExplored, checkAchievement, isFavorite, toggleFavorite } from '../state.js';
 import { getCategoriesByGroup, getJob, getJobFull, hasFullData } from '../data-loader.js';
@@ -154,7 +155,8 @@ function createMidCategoryChips() {
     // "全部" Chip
     const allSelected = _exploreState.selectedCats.length === midCats.length;
     const allChip = createEl('button', 'category-tab' + (allSelected ? ' active' : ''));
-    allChip.textContent = '全部';
+    allChip.appendChild(icon('layers', 14));
+    allChip.appendChild(document.createTextNode(' 全部'));
     allChip.addEventListener('click', function() {
         _exploreState.selectedCats = midCats.map(function(c) { return c.id; });
         refreshExplore();
@@ -165,7 +167,9 @@ function createMidCategoryChips() {
     midCats.forEach(function(cat) {
         const isActive = _exploreState.selectedCats.indexOf(cat.id) !== -1;
         const chip = createEl('button', 'category-tab' + (isActive ? ' active' : ''));
-        chip.textContent = (cat.icon || '') + ' ' + (cat.name || '');
+        const catInfo = getCategoryIcon(cat.id);
+        chip.appendChild(icon(catInfo.icon, 14, catInfo.color));
+        chip.appendChild(document.createTextNode(' ' + (cat.name || '')));
 
         chip.addEventListener('click', function() {
             const idx = _exploreState.selectedCats.indexOf(cat.id);
@@ -203,51 +207,13 @@ function createJobList() {
     filtered = sortByField(filtered, 'name', 'asc');
     _exploreState.filteredJobs = filtered;
 
-    // 虚拟滚动容器
+    // 直接渲染列表（不再使用虚拟滚动）
     const list = createEl('div', 'job-list');
-    list.style.overflow = 'auto';
-    list.style.maxHeight = 'calc(100vh - 280px)';
-    list.style.webkitOverflowScrolling = 'touch';
 
-    // 占位元素撑开滚动高度
-    const placeholder = createEl('div', '');
-    placeholder.style.height = (filtered.length * 72) + 'px'; // 每个卡片约72px高
-    list.appendChild(placeholder);
-
-    // 可视区域容器
-    const visibleContainer = createEl('div', '');
-    visibleContainer.style.position = 'relative';
-    list.insertBefore(visibleContainer, placeholder);
-
-    const ITEM_HEIGHT = 72;
-    const BUFFER = 5;
-
-    function renderVisibleItems() {
-        const scrollTop = list.scrollTop;
-        const viewHeight = list.clientHeight;
-        const startIndex = Math.max(0, Math.floor(scrollTop / ITEM_HEIGHT) - BUFFER);
-        const endIndex = Math.min(filtered.length, Math.ceil((scrollTop + viewHeight) / ITEM_HEIGHT) + BUFFER);
-
-        // 清空并重新渲染可见项
-        while (visibleContainer.firstChild) {
-            visibleContainer.removeChild(visibleContainer.firstChild);
-        }
-
-        for (let i = startIndex; i < endIndex; i++) {
-            const card = createJobCard(filtered[i], i);
-            card.style.position = 'absolute';
-            card.style.top = (i * ITEM_HEIGHT) + 'px';
-            card.style.left = '0';
-            card.style.right = '0';
-            card.style.animationDelay = '0ms'; // 虚拟滚动不需要入场动画
-            visibleContainer.appendChild(card);
-        }
-    }
-
-    list.addEventListener('scroll', throttle(renderVisibleItems, 50));
-
-    // 初始渲染
-    renderVisibleItems();
+    filtered.forEach(function(job, i) {
+        const card = createJobCard(job, i);
+        list.appendChild(card);
+    });
 
     wrap.appendChild(list);
     return wrap;
@@ -282,8 +248,7 @@ function createJobCard(job, index) {
     const card = createEl('div', 'job-card');
     card.style.animationDelay = Math.min(index * 30, 300) + 'ms';
 
-    const icon = createEl('div', 'job-icon');
-    icon.textContent = job.icon || '💼';
+    const iconEl = categoryIconEl(job.category || job.group);
 
     const info = createEl('div', 'job-info');
 
@@ -312,7 +277,7 @@ function createJobCard(job, index) {
         }
     }
 
-    card.appendChild(icon);
+    card.appendChild(iconEl);
     card.appendChild(info);
 
     if (salary) {
@@ -365,11 +330,17 @@ export async function openJobDetailModal(jobId) {
 
     // 如果没有完整数据，显示加载状态并按需加载
     if (!hasFullData(jobId)) {
-        const loadingHtml = '<div class="job-detail" style="text-align:center;padding:60px 20px;">'
-            + '<div style="font-size:32px;margin-bottom:12px;">⏳</div>'
-            + '<div style="color:var(--text-secondary);">正在加载职业详情...</div>'
-            + '</div>';
-        showModal(loadingHtml);
+        const loadingWrap = document.createElement('div');
+        loadingWrap.className = 'job-detail';
+        loadingWrap.style.cssText = 'text-align:center;padding:60px 20px;';
+        const timerIcon = icon('timer', 32);
+        timerIcon.style.marginBottom = '12px';
+        loadingWrap.appendChild(timerIcon);
+        const loadingText = document.createElement('div');
+        loadingText.style.color = 'var(--text-secondary)';
+        loadingText.textContent = '正在加载职业详情...';
+        loadingWrap.appendChild(loadingText);
+        showModal(loadingWrap);
 
         // 按需加载完整数据
         job = await getJobFull(jobId);
@@ -398,15 +369,15 @@ export async function openJobDetailModal(jobId) {
     if (header) {
         // 关闭按钮
         const closeBtn = createEl('button', 'detail-close-btn');
-        closeBtn.textContent = '✕';
+        closeBtn.textContent = '\u00d7';
         closeBtn.setAttribute('aria-label', '关闭');
         closeBtn.addEventListener('click', function() {
             if (typeof hideModal === 'function') hideModal();
         });
         header.appendChild(closeBtn);
 
-        const iconEl = createEl('div', 'detail-icon');
-        iconEl.textContent = job.icon || '💼';
+        const iconEl = categoryIconEl(job.category || job.group, 64);
+        iconEl.classList.add('detail-icon');
 
         const nameEl = createEl('div', 'detail-name');
         nameEl.textContent = job.name || '';
@@ -435,23 +406,59 @@ function _renderJobDetailContent(job, jobId) {
     const overview = document.getElementById('detailOverview');
     if (overview) {
         const items = [
-            { label: '工作内容', value: ov.whatDo || '暂无介绍' },
-            { label: '工作环境', value: ov.environment || '暂无介绍' },
-            { label: '工作时间', value: ov.workTime || '暂无介绍' },
-            { label: '薪资待遇', value: ov.salary || '暂无介绍' },
-            { label: '适合人群', value: ov.whoFits || '暂无介绍', full: true },
-            { label: '优点', value: ov.pros || '暂无' },
-            { label: '注意事项', value: ov.cons || '暂无' }
+            { label: '日常工作', value: ov.whatDo || '暂无介绍', iconName: 'clipboardList', full: false },
+            { label: '工作环境', value: ov.environment || '暂无介绍', iconName: 'building', full: false },
+            { label: '工作时间', value: ov.workTime || '暂无介绍', iconName: 'clock', full: false },
+            { label: '薪资待遇', value: ov.salary || '暂无介绍', iconName: 'coins', full: false },
+            { label: '适合人群', value: ov.whoFits || '暂无介绍', iconName: 'users', full: true },
+            { label: '职业优势', value: ov.pros || '暂无', iconName: 'checkCircle', full: false },
+            { label: '注意事项', value: ov.cons || '暂无', iconName: 'alertTriangle', full: false }
         ];
 
         items.forEach(function(item) {
             const div = createEl('div', 'overview-item' + (item.full ? ' full-width' : ''));
-            const label = createEl('div', 'overview-label');
-            label.textContent = item.label;
+
+            const labelWrap = createEl('div', 'overview-label');
+            const labelIcon = icon(item.iconName, 16, 'var(--accent)');
+            const labelText = createEl('span', '');
+            labelText.textContent = item.label;
+            labelWrap.appendChild(labelIcon);
+            labelWrap.appendChild(labelText);
+
             const value = createEl('div', 'overview-value');
             value.textContent = item.value;
-            div.appendChild(label);
-            div.appendChild(value);
+
+            // 如果内容较长，添加展开/收起功能
+            if (item.value && item.value.length > 80 && !item.full) {
+                value.style.maxHeight = '60px';
+                value.style.overflow = 'hidden';
+                value.style.transition = 'max-height 0.3s ease';
+                value.classList.add('collapsed');
+
+                const expandBtn = createEl('span', 'overview-expand');
+                expandBtn.textContent = '展开';
+                expandBtn.style.cssText = 'font-size:12px;color:var(--accent);cursor:pointer;margin-top:4px;display:inline-block;';
+
+                expandBtn.addEventListener('click', function() {
+                    if (value.classList.contains('collapsed')) {
+                        value.style.maxHeight = value.scrollHeight + 20 + 'px';
+                        value.classList.remove('collapsed');
+                        expandBtn.textContent = '收起';
+                    } else {
+                        value.style.maxHeight = '60px';
+                        value.classList.add('collapsed');
+                        expandBtn.textContent = '展开';
+                    }
+                });
+
+                div.appendChild(labelWrap);
+                div.appendChild(value);
+                div.appendChild(expandBtn);
+            } else {
+                div.appendChild(labelWrap);
+                div.appendChild(value);
+            }
+
             overview.appendChild(div);
         });
     }
@@ -528,7 +535,8 @@ function _renderJobDetailContent(job, jobId) {
             const levelHeader = createEl('div', 'level-header');
 
             const levelIcon = createEl('span', 'level-icon');
-            levelIcon.textContent = level.icon || '📖';
+            levelIcon.textContent = '';
+            levelIcon.appendChild(icon(level.icon || 'bookOpen', 24));
 
             const levelInfo = createEl('div', 'level-info');
             const levelName = createEl('div', 'level-name');
@@ -562,7 +570,9 @@ function _renderJobDetailContent(job, jobId) {
             // 目标成果
             if (level.outcome) {
                 const outcome = createEl('div', 'level-outcome');
-                outcome.textContent = '🎯 ' + level.outcome;
+                outcome.textContent = '';
+                outcome.appendChild(icon('target', 14));
+                outcome.appendChild(document.createTextNode(' ' + level.outcome));
                 levelInfo.appendChild(outcome);
             }
 
@@ -587,7 +597,8 @@ function _renderJobDetailContent(job, jobId) {
                     const stepItem = createEl('div', 'step-item' + (isCompleted ? ' completed' : ''));
 
                     const stepIcon = createEl('span', 'step-icon');
-                    stepIcon.textContent = isCompleted ? '✅' : (step.icon || '📌');
+                    stepIcon.textContent = '';
+                    stepIcon.appendChild(icon(isCompleted ? 'checkCircle' : 'flag', 18));
 
                     const stepInfo = createEl('div', '');
                     const stepTitleRow = createEl('div', '');
@@ -607,9 +618,13 @@ function _renderJobDetailContent(job, jobId) {
                         const timeEl = createEl('span', 'step-time');
                         const hours = Math.round(step.estimatedTime / 60);
                         if (hours >= 1) {
-                            timeEl.textContent = '⏱ ' + hours + '小时';
+                            timeEl.textContent = '';
+                            timeEl.appendChild(icon('timer', 14));
+                            timeEl.appendChild(document.createTextNode(' ' + hours + '小时'));
                         } else {
-                            timeEl.textContent = '⏱ ' + step.estimatedTime + '分钟';
+                            timeEl.textContent = '';
+                            timeEl.appendChild(icon('timer', 14));
+                            timeEl.appendChild(document.createTextNode(' ' + step.estimatedTime + '分钟'));
                         }
                         stepTitleRow.appendChild(timeEl);
                     }
@@ -623,21 +638,41 @@ function _renderJobDetailContent(job, jobId) {
                     // 实用建议
                     if (step.tip) {
                         const tipEl = createEl('div', 'step-tip');
-                        tipEl.textContent = '💡 ' + step.tip;
+                        tipEl.textContent = '';
+                        tipEl.appendChild(icon('lightbulb', 14));
+                        tipEl.appendChild(document.createTextNode(' ' + step.tip));
                         stepInfo.appendChild(tipEl);
                     }
 
-                    // === Feature 2: 学习资源链接 ===
-                    const resourceBtn = createEl('a', 'step-resource');
-                    resourceBtn.textContent = '📚 学习资源';
-                    resourceBtn.target = '_blank';
-                    resourceBtn.rel = 'noopener';
-                    const searchQuery = encodeURIComponent(job.name + ' ' + step.title + ' 学习教程');
-                    resourceBtn.href = 'https://www.baidu.com/s?wd=' + searchQuery;
-                    resourceBtn.addEventListener('click', function(e) {
-                        e.stopPropagation();
+                    // === Feature 2: 学习资源链接（多平台） ===
+                    const resourceWrap = createEl('div', 'step-resource-wrap');
+
+                    const searchQuery = encodeURIComponent(job.name + ' ' + step.title);
+
+                    // 学习平台列表
+                    const platforms = [
+                        { name: 'B站', url: 'https://search.bilibili.com/all?keyword=' + searchQuery, icon: 'tv', color: '#FB7299' },
+                        { name: '慕课网', url: 'https://www.imooc.com/search/?words=' + searchQuery, icon: 'graduationCap', color: '#F01414' },
+                        { name: '中国大学MOOC', url: 'https://www.icourse163.org/search.htm?search=' + searchQuery, icon: 'building', color: '#C3002F' },
+                        { name: '百度', url: 'https://www.baidu.com/s?wd=' + searchQuery, icon: 'search', color: '#3B82F6' }
+                    ];
+
+                    platforms.forEach(function(p) {
+                        const link = createEl('a', 'step-resource-link');
+                        link.textContent = '';
+                        link.appendChild(icon(p.icon, 14, p.color));
+                        link.appendChild(document.createTextNode(' ' + p.name));
+                        link.target = '_blank';
+                        link.rel = 'noopener';
+                        link.href = p.url;
+                        link.style.color = p.color;
+                        link.addEventListener('click', function(e) {
+                            e.stopPropagation();
+                        });
+                        resourceWrap.appendChild(link);
                     });
-                    stepInfo.appendChild(resourceBtn);
+
+                    stepInfo.appendChild(resourceWrap);
 
                     stepItem.appendChild(stepIcon);
                     stepItem.appendChild(stepInfo);
@@ -690,7 +725,9 @@ function _renderJobDetailContent(job, jobId) {
         // === Feature 3: 学习计划生成器 ===
         const planBtn = createEl('button', 'btn btn-primary');
         planBtn.style.cssText = 'width:100%;margin-top:var(--space-4);';
-        planBtn.textContent = '📋 生成我的学习计划';
+        planBtn.textContent = '';
+        planBtn.appendChild(icon('clipboardList', 16));
+        planBtn.appendChild(document.createTextNode(' 生成我的学习计划'));
         planBtn.addEventListener('click', function() {
             // 确定推荐级别
             let targetLevelIdx = 0;
@@ -704,48 +741,106 @@ function _renderJobDetailContent(job, jobId) {
                 return;
             }
 
-            // 构建计划 HTML
-            let html = '<div style="text-align:right;margin-bottom:8px;"><span id="planCloseBtn" style="font-size:18px;color:var(--text-tertiary);cursor:pointer;padding:4px 8px;">✕</span></div>';
-            html += '<div style="font-size:var(--text-base);font-weight:var(--font-semibold);margin-bottom:var(--space-4);text-align:center;">' + escapeHtml(job.name) + ' - 学习计划</div>';
+            // 构建计划 DOM
+            const planWrap = document.createElement('div');
+
+            // 关闭按钮
+            const planCloseRow = document.createElement('div');
+            planCloseRow.style.cssText = 'text-align:right;margin-bottom:8px;';
+            const planCloseBtn2 = document.createElement('span');
+            planCloseBtn2.id = 'planCloseBtn';
+            planCloseBtn2.style.cssText = 'font-size:18px;color:var(--text-tertiary);cursor:pointer;padding:4px 8px;';
+            planCloseBtn2.textContent = '\u00d7';
+            planCloseBtn2.addEventListener('click', function() { hideModal(); });
+            planCloseRow.appendChild(planCloseBtn2);
+            planWrap.appendChild(planCloseRow);
+
+            // 标题
+            const planTitle = document.createElement('div');
+            planTitle.style.cssText = 'font-size:var(--text-base);font-weight:var(--font-semibold);margin-bottom:var(--space-4);text-align:center;';
+            planTitle.textContent = job.name + ' - 学习计划';
+            planWrap.appendChild(planTitle);
 
             // 本周重点
-            html += '<div class="plan-section"><div class="plan-section-title">📌 本周重点</div>';
+            const weekSection = createEl('div', 'plan-section');
+            const weekTitle = createEl('div', 'plan-section-title');
+            weekTitle.textContent = '';
+            weekTitle.appendChild(icon('flag', 14));
+            weekTitle.appendChild(document.createTextNode(' 本周重点'));
+            weekSection.appendChild(weekTitle);
             const weekSteps = targetLevel.steps.slice(0, 2);
             for (let wi = 0; wi < weekSteps.length; wi++) {
                 const ws = weekSteps[wi];
                 const wh = ws.estimatedTime ? Math.round(ws.estimatedTime / 60) : 0;
                 const wt = wh >= 1 ? wh + '小时' : (ws.estimatedTime ? ws.estimatedTime + '分钟' : '');
-                html += '<div class="plan-item"><span class="plan-item-icon">☐</span><span class="plan-item-text">' + escapeHtml(ws.title || '') + '</span><span class="plan-item-time">' + wt + '</span></div>';
+                const planItem = createEl('div', 'plan-item');
+                const planItemIcon = createEl('span', 'plan-item-icon');
+                planItemIcon.appendChild(icon('circle', 14, 'var(--text-tertiary)'));
+                const planItemText = createEl('span', 'plan-item-text');
+                planItemText.textContent = ws.title || '';
+                const planItemTime = createEl('span', 'plan-item-time');
+                planItemTime.textContent = wt;
+                planItem.appendChild(planItemIcon);
+                planItem.appendChild(planItemText);
+                planItem.appendChild(planItemTime);
+                weekSection.appendChild(planItem);
             }
-            html += '</div>';
+            planWrap.appendChild(weekSection);
 
             // 本月目标
-            html += '<div class="plan-section"><div class="plan-section-title">🎯 本月目标</div>';
+            const monthSection = createEl('div', 'plan-section');
+            const monthTitle = createEl('div', 'plan-section-title');
+            monthTitle.textContent = '';
+            monthTitle.appendChild(icon('target', 14));
+            monthTitle.appendChild(document.createTextNode(' 本月目标'));
+            monthSection.appendChild(monthTitle);
             let totalMin = 0;
             for (let ti = 0; ti < targetLevel.steps.length; ti++) {
                 totalMin += (targetLevel.steps[ti].estimatedTime || 0);
             }
             const totalH = Math.round(totalMin / 60);
             const totalTimeStr = totalH >= 1 ? '约' + totalH + '小时' : '约' + totalMin + '分钟';
-            html += '<div class="plan-item"><span class="plan-item-icon">🏆</span><span class="plan-item-text">完成「第' + targetLevel.level + '级 · ' + escapeHtml(targetLevel.name || '') + '」全部 ' + targetLevel.steps.length + ' 个步骤</span><span class="plan-item-time">' + totalTimeStr + '</span></div>';
+            const goalItem = createEl('div', 'plan-item');
+            const goalIcon = createEl('span', 'plan-item-icon');
+            goalIcon.appendChild(icon('trophy', 14));
+            const goalText = createEl('span', 'plan-item-text');
+            goalText.textContent = '完成「第' + targetLevel.level + '级 · ' + (targetLevel.name || '') + '」全部 ' + targetLevel.steps.length + ' 个步骤';
+            const goalTime = createEl('span', 'plan-item-time');
+            goalTime.textContent = totalTimeStr;
+            goalItem.appendChild(goalIcon);
+            goalItem.appendChild(goalText);
+            goalItem.appendChild(goalTime);
+            monthSection.appendChild(goalItem);
 
             for (let si = 0; si < targetLevel.steps.length; si++) {
                 const ss = targetLevel.steps[si];
                 const sh = ss.estimatedTime ? Math.round(ss.estimatedTime / 60) : 0;
                 const st = sh >= 1 ? sh + '小时' : (ss.estimatedTime ? ss.estimatedTime + '分钟' : '');
-                html += '<div class="plan-item"><span class="plan-item-icon">☐</span><span class="plan-item-text">' + escapeHtml(ss.title || '') + '</span><span class="plan-item-time">' + st + '</span></div>';
+                const stepItem2 = createEl('div', 'plan-item');
+                const stepIcon2 = createEl('span', 'plan-item-icon');
+                stepIcon2.appendChild(icon('circle', 14, 'var(--text-tertiary)'));
+                const stepText2 = createEl('span', 'plan-item-text');
+                stepText2.textContent = ss.title || '';
+                const stepTime2 = createEl('span', 'plan-item-time');
+                stepTime2.textContent = st;
+                stepItem2.appendChild(stepIcon2);
+                stepItem2.appendChild(stepText2);
+                stepItem2.appendChild(stepTime2);
+                monthSection.appendChild(stepItem2);
             }
-            html += '</div>';
+            planWrap.appendChild(monthSection);
 
             // 分享按钮
-            html += '<button class="btn btn-outline" id="planShareBtn" style="width:100%;margin-top:var(--space-4);">分享到社区</button>';
+            const shareBtn2 = document.createElement('button');
+            shareBtn2.className = 'btn btn-outline';
+            shareBtn2.id = 'planShareBtn';
+            shareBtn2.style.cssText = 'width:100%;margin-top:var(--space-4);';
+            shareBtn2.textContent = '分享到社区';
+            planWrap.appendChild(shareBtn2);
 
-            showModal(html);
+            showModal(planWrap);
 
             // 绑定事件
-            const closeEl = document.getElementById('planCloseBtn');
-            if (closeEl) closeEl.addEventListener('click', function() { hideModal(); });
-
             const shareEl = document.getElementById('planShareBtn');
             if (shareEl) shareEl.addEventListener('click', function() {
                 let planText = job.name + ' 学习计划\n本周重点:\n';
@@ -781,10 +876,14 @@ function _renderJobDetailContent(job, jobId) {
         // 收藏按钮
         const favBtn = createEl('button', 'btn btn-secondary');
         const favText = isFavorite(jobId) ? '已收藏' : '收藏';
-        favBtn.textContent = (isFavorite(jobId) ? '⭐' : '☆') + ' ' + favText;
+        favBtn.textContent = '';
+        favBtn.appendChild(icon('star', 16, isFavorite(jobId) ? '#F59E0B' : 'var(--text-tertiary)'));
+        favBtn.appendChild(document.createTextNode(' ' + favText));
         favBtn.addEventListener('click', function() {
             const nowFav = toggleFavorite(jobId);
-            favBtn.textContent = (nowFav ? '⭐' : '☆') + ' ' + (nowFav ? '已收藏' : '收藏');
+            favBtn.textContent = '';
+            favBtn.appendChild(icon('star', 16, nowFav ? '#F59E0B' : 'var(--text-tertiary)'));
+            favBtn.appendChild(document.createTextNode(' ' + (nowFav ? '已收藏' : '收藏')));
             showToast(nowFav ? '已收藏' : '已取消收藏', 'success');
 
             // 检查收藏相关成就
@@ -796,7 +895,9 @@ function _renderJobDetailContent(job, jobId) {
 
         // 分享按钮
         const shareBtn = createEl('button', 'btn btn-secondary');
-        shareBtn.textContent = '🔗 分享';
+        shareBtn.textContent = '';
+        shareBtn.appendChild(icon('share2', 16));
+        shareBtn.appendChild(document.createTextNode(' 分享'));
         shareBtn.addEventListener('click', function() {
             const shareText = job.name + ' - ' + (ov.shortDesc || job.desc);
             if (navigator.share) {
@@ -815,7 +916,9 @@ function _renderJobDetailContent(job, jobId) {
 
         // AI 提问按钮
         const aiBtn = createEl('button', 'btn btn-primary');
-        aiBtn.textContent = '🤖 AI提问';
+        aiBtn.textContent = '';
+        aiBtn.appendChild(icon('bot', 16));
+        aiBtn.appendChild(document.createTextNode(' AI提问'));
         aiBtn.addEventListener('click', function() {
             hideModal();
             // 跳转到 AI 页面并预填问题
@@ -867,7 +970,9 @@ function _renderJobDetailContent(job, jobId) {
             related.forEach(function(rj) {
                 const card = createEl('div', '');
                 card.style.cssText = 'background:var(--bg-tertiary);border-radius:var(--radius-md);padding:var(--space-2);text-align:center;cursor:pointer;transition:transform 0.15s ease;';
-                card.textContent = (rj.icon || '💼') + ' ' + (rj.name || '');
+                card.textContent = '';
+                card.appendChild(categoryIconEl(rj.category || rj.group, 36));
+                card.appendChild(document.createTextNode(' ' + (rj.name || '')));
                 card.style.fontSize = 'var(--text-xs)';
                 card.addEventListener('click', function() {
                     hideModal();
