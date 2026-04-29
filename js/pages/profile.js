@@ -533,7 +533,9 @@ async function showLeanCloudConfigPanel() {
     const tipRow = createEl('div', '');
     tipRow.style.cssText = 'margin-bottom:var(--space-3);';
     const tipLink = createEl('a', '');
-    tipLink.textContent = '👉 前往 LeanCloud 控制台获取配置';
+    tipLink.textContent = '';
+    tipLink.appendChild(icon('externalLink', 12));
+    tipLink.appendChild(document.createTextNode(' 前往 LeanCloud 控制台获取配置'));
     tipLink.href = 'https://console.leancloud.cn/app';
     tipLink.target = '_blank';
     tipLink.rel = 'noopener noreferrer';

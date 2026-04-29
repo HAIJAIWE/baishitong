@@ -25,7 +25,8 @@ function renderAvatar(avatarEl, avatarName, color) {
             avatarEl.textContent = avatarName.charAt(0).toUpperCase();
         }
     } else {
-        avatarEl.textContent = '👤';
+        avatarEl.textContent = '';
+        avatarEl.appendChild(icon('user', 16));
     }
 }
 

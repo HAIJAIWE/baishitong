@@ -553,7 +553,8 @@ function createChatInput(chatArea) {
     input.setAttribute('aria-label', '输入职业问题');
 
     const sendBtn = createEl('button', 'send-btn');
-    sendBtn.textContent = '➤';
+    sendBtn.textContent = '';
+    sendBtn.appendChild(icon('send', 18));
     sendBtn.style.cssText = 'font-size:18px;';
 
     sendBtn.addEventListener('click', function() {
@@ -585,7 +586,8 @@ function createChatInput(chatArea) {
 function appendUserBubble(container, text) {
     const bubble = createEl('div', 'chat-bubble user');
     const avatar = createEl('div', 'bubble-avatar');
-    avatar.textContent = '👤';
+    avatar.textContent = '';
+    avatar.appendChild(icon('user', 16));
     const content = createEl('div', 'bubble-content');
     content.textContent = text;
     bubble.appendChild(avatar);
@@ -679,7 +681,9 @@ function showModelSelectorPanel() {
 
     // 国内模型
     const cnTitle = createEl('div', 'modal-sub-title');
-    cnTitle.textContent = '🇨🇳 国内模型';
+    cnTitle.textContent = '';
+    cnTitle.appendChild(icon('mapPin', 14, 'var(--accent)'));
+    cnTitle.appendChild(document.createTextNode(' 国内模型'));
     cnTitle.style.cssText = 'font-size:var(--text-xs);color:var(--text-tertiary);margin:var(--space-2) 0 var(--space-1);';
     panel.appendChild(cnTitle);
 
@@ -891,7 +895,9 @@ function showApiKeyPanel(model) {
         const linkRow = createEl('div', '');
         linkRow.style.cssText = 'margin-bottom:var(--space-3);';
         const link = createEl('a', '');
-        link.textContent = '👉 前往 ' + (model.provider || '') + ' 获取 API Key';
+        link.textContent = '';
+        link.appendChild(icon('externalLink', 12));
+        link.appendChild(document.createTextNode(' 前往 ' + (model.provider || '') + ' 获取 API Key'));
         link.href = model.keyUrl;
         link.target = '_blank';
         link.rel = 'noopener noreferrer';
