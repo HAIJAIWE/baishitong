@@ -1,0 +1,415 @@
+/* ============================================
+   百事通 v1.0 - 视觉特效 (Visual Effects)
+   流光、发光、渐变动画、悬浮特效
+   ============================================ */
+
+/* === 1. 全局流光渐变背景 === */
+.app-container::before {
+    content: '';
+    position: fixed;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: conic-gradient(
+        from 0deg at 50% 50%,
+        transparent 0deg,
+        rgba(245, 158, 11, 0.03) 60deg,
+        transparent 120deg,
+        rgba(59, 130, 246, 0.03) 180deg,
+        transparent 240deg,
+        rgba(16, 185, 129, 0.03) 300deg,
+        transparent 360deg
+    );
+    animation: auraRotate 20s linear infinite;
+    pointer-events: none;
+    z-index: 0;
+}
+
+@keyframes auraRotate {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+/* === 2. 页面顶部流光条 === */
+.bottom-nav::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(
+        90deg,
+        transparent 0%,
+        var(--accent) 25%,
+        var(--accent-hover) 50%,
+        var(--accent) 75%,
+        transparent 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmerLine 3s ease-in-out infinite;
+    opacity: 0.6;
+}
+
+@keyframes shimmerLine {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+/* === 3. 卡片悬浮流光边框 === */
+.recommend-card,
+.category-card,
+.job-card,
+.tip-card,
+.settings-item,
+.plan-section {
+    position: relative;
+    overflow: hidden;
+    transition: transform var(--duration-normal) var(--ease-out),
+                box-shadow var(--duration-normal) var(--ease-out);
+}
+
+.recommend-card::after,
+.category-card::after,
+.job-card::after {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: linear-gradient(
+        45deg,
+        transparent 40%,
+        rgba(245, 158, 11, 0.06) 45%,
+        rgba(245, 158, 11, 0.12) 50%,
+        rgba(245, 158, 11, 0.06) 55%,
+        transparent 60%
+    );
+    animation: cardShimmer 4s ease-in-out infinite;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity var(--duration-normal) ease;
+}
+
+.recommend-card:hover::after,
+.category-card:hover::after,
+.job-card:hover::after {
+    opacity: 1;
+}
+
+@keyframes cardShimmer {
+    0% { transform: translateX(-100%) translateY(-100%); }
+    100% { transform: translateX(100%) translateY(100%); }
+}
+
+/* 卡片悬浮效果 */
+.recommend-card:hover,
+.job-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(245, 158, 11, 0.15),
+                0 0 0 1px rgba(245, 158, 11, 0.1);
+}
+
+.category-card:hover {
+    transform: translateY(-2px) scale(1.02);
+    box-shadow: 0 8px 25px rgba(59, 130, 246, 0.15),
+                0 0 0 1px rgba(59, 130, 246, 0.1);
+}
+
+/* === 4. 按钮发光效果 === */
+.btn-primary {
+    position: relative;
+    overflow: hidden;
+    transition: all var(--duration-normal) var(--ease-out);
+}
+
+.btn-primary::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+        90deg,
+        transparent 0%,
+        rgba(255, 255, 255, 0.2) 50%,
+        transparent 100%
+    );
+    transition: left 0.5s ease;
+}
+
+.btn-primary:hover::before {
+    left: 100%;
+}
+
+.btn-primary:hover {
+    box-shadow: 0 0 20px rgba(245, 158, 11, 0.4),
+                0 0 40px rgba(245, 158, 11, 0.2);
+    transform: translateY(-1px);
+}
+
+.btn-primary:active {
+    transform: translateY(0) scale(0.98);
+}
+
+/* === 5. 标题文字流光 === */
+.disclaimer-title,
+.profile-name,
+.page-title {
+    background: linear-gradient(
+        90deg,
+        var(--text-primary) 0%,
+        var(--accent) 25%,
+        var(--accent-hover) 50%,
+        var(--accent) 75%,
+        var(--text-primary) 100%
+    );
+    background-size: 200% auto;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: textShimmer 4s linear infinite;
+}
+
+@keyframes textShimmer {
+    0% { background-position: 0% center; }
+    100% { background-position: 200% center; }
+}
+
+/* === 6. 底部导航活跃项发光 === */
+.nav-item.active .nav-icon {
+    filter: drop-shadow(0 0 6px var(--accent));
+    transition: filter var(--duration-normal) ease;
+}
+
+.nav-item.active .nav-label {
+    text-shadow: 0 0 8px rgba(245, 158, 11, 0.5);
+}
+
+/* === 7. 统计卡片数字脉冲 === */
+.stat-value {
+    animation: statPulse 3s ease-in-out infinite;
+}
+
+@keyframes statPulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.85; }
+}
+
+/* === 8. 签到按钮呼吸光效 === */
+.checkin-btn:not(.checked) {
+    animation: breatheGlow 2s ease-in-out infinite;
+}
+
+@keyframes breatheGlow {
+    0%, 100% {
+        box-shadow: 0 0 5px rgba(245, 158, 11, 0.3),
+                    0 0 10px rgba(245, 158, 11, 0.1);
+    }
+    50% {
+        box-shadow: 0 0 15px rgba(245, 158, 11, 0.5),
+                    0 0 30px rgba(245, 158, 11, 0.2),
+                    0 0 45px rgba(245, 158, 11, 0.1);
+    }
+}
+
+/* === 9. 搜索框聚焦流光 === */
+.chat-input:focus,
+.search-input:focus {
+    box-shadow: 0 0 0 2px var(--accent-subtle),
+                0 0 15px rgba(245, 158, 11, 0.15);
+    border-color: var(--accent);
+    transition: all var(--duration-normal) ease;
+}
+
+/* === 10. 成就卡片解锁闪光 === */
+.achievement-card.unlocked {
+    position: relative;
+    overflow: hidden;
+}
+
+.achievement-card.unlocked::before {
+    content: '';
+    position: absolute;
+    top: -2px;
+    left: -2px;
+    right: -2px;
+    bottom: -2px;
+    background: linear-gradient(
+        45deg,
+        var(--accent) 0%,
+        #f97316 25%,
+        var(--accent-hover) 50%,
+        #f97316 75%,
+        var(--accent) 100%
+    );
+    background-size: 300% 300%;
+    animation: achievementGlow 3s ease infinite;
+    border-radius: inherit;
+    z-index: -1;
+    opacity: 0.5;
+}
+
+@keyframes achievementGlow {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
+/* === 11. 页面切换淡入动画 === */
+.page {
+    animation: pageEnter 0.4s var(--ease-out) both;
+}
+
+@keyframes pageEnter {
+    from {
+        opacity: 0;
+        transform: translateY(12px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* === 12. 浮动粒子背景（轻量） === */
+.app-container::after {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image:
+        radial-gradient(1px 1px at 10% 20%, rgba(245, 158, 11, 0.15) 0%, transparent 100%),
+        radial-gradient(1px 1px at 30% 60%, rgba(59, 130, 246, 0.1) 0%, transparent 100%),
+        radial-gradient(1px 1px at 50% 30%, rgba(16, 185, 129, 0.1) 0%, transparent 100%),
+        radial-gradient(1px 1px at 70% 70%, rgba(245, 158, 11, 0.1) 0%, transparent 100%),
+        radial-gradient(1px 1px at 90% 40%, rgba(59, 130, 246, 0.12) 0%, transparent 100%),
+        radial-gradient(1.5px 1.5px at 20% 80%, rgba(245, 158, 11, 0.08) 0%, transparent 100%),
+        radial-gradient(1.5px 1.5px at 60% 10%, rgba(16, 185, 129, 0.08) 0%, transparent 100%),
+        radial-gradient(1px 1px at 80% 90%, rgba(59, 130, 246, 0.1) 0%, transparent 100%);
+    animation: particleFloat 15s ease-in-out infinite;
+    pointer-events: none;
+    z-index: 0;
+}
+
+@keyframes particleFloat {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+}
+
+/* === 13. 模态框入场动画 === */
+.modal-overlay {
+    animation: modalFadeIn 0.3s var(--ease-out) both;
+}
+
+.modal-content {
+    animation: modalSlideUp 0.35s var(--ease-bounce) both;
+}
+
+@keyframes modalFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes modalSlideUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px) scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* === 14. 免责声明卡片入场 === */
+.disclaimer-card {
+    animation: disclaimerEnter 0.6s var(--ease-out) both;
+}
+
+@keyframes disclaimerEnter {
+    from {
+        opacity: 0;
+        transform: translateY(20px) scale(0.96);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* === 15. Toast 通知滑入 === */
+.toast {
+    animation: toastSlideIn 0.4s var(--ease-bounce) both;
+}
+
+@keyframes toastSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-20px) scale(0.9);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* === 16. 亮色模式适配 === */
+[data-theme="light"] .recommend-card:hover,
+[data-theme="light"] .job-card:hover {
+    box-shadow: 0 8px 25px rgba(37, 99, 235, 0.12),
+                0 0 0 1px rgba(37, 99, 235, 0.08);
+}
+
+[data-theme="light"] .category-card:hover {
+    box-shadow: 0 8px 25px rgba(37, 99, 235, 0.12),
+                0 0 0 1px rgba(37, 99, 235, 0.08);
+}
+
+[data-theme="light"] .btn-primary:hover {
+    box-shadow: 0 0 20px rgba(37, 99, 235, 0.3),
+                0 0 40px rgba(37, 99, 235, 0.15);
+}
+
+[data-theme="light"] .checkin-btn:not(.checked) {
+    animation-name: breatheGlowLight;
+}
+
+@keyframes breatheGlowLight {
+    0%, 100% {
+        box-shadow: 0 0 5px rgba(37, 99, 235, 0.2),
+                    0 0 10px rgba(37, 99, 235, 0.08);
+    }
+    50% {
+        box-shadow: 0 0 15px rgba(37, 99, 235, 0.35),
+                    0 0 30px rgba(37, 99, 235, 0.15),
+                    0 0 45px rgba(37, 99, 235, 0.08);
+    }
+}
+
+[data-theme="light"] .app-container::before {
+    background: conic-gradient(
+        from 0deg at 50% 50%,
+        transparent 0deg,
+        rgba(37, 99, 235, 0.04) 60deg,
+        transparent 120deg,
+        rgba(245, 158, 11, 0.03) 180deg,
+        transparent 240deg,
+        rgba(16, 185, 129, 0.03) 300deg,
+        transparent 360deg
+    );
+}
+
+/* === 17. 减少动画偏好 === */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
