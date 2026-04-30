@@ -488,7 +488,7 @@ function createAnnouncement() {
     section.appendChild(icon);
 
     var text = createEl('div', 'announcement-text');
-    text.textContent = '百事通持续更新中！后续将上线社区互动、更多职业数据、用户作品集等功能，敬请期待～';
+    text.textContent = '🎉 百事通现已收录2000条生活常识、1669个职业数据、7个AI智能体，持续优化中！';
     section.appendChild(text);
 
     var closeBtn = createEl('span', 'announcement-close');
