@@ -206,9 +206,62 @@ function showSubTabs(page, catId) {
     subTabsWrap.appendChild(allChip);
 
     // 各中类 Chip
+    const subIcons = {
+        // 厨房烹饪
+        'cooking_skill': { icon: 'flame', emoji: '🔥' },
+        'food_prep': { icon: 'chefHat', emoji: '🔪' },
+        'seasoning': { icon: 'droplets', emoji: '🧂' },
+        'food_storage': { icon: 'refrigerator', emoji: '🫙' },
+        // 家务收纳
+        'cleaning': { icon: 'sparkles', emoji: '✨' },
+        'organizing': { icon: 'archive', emoji: '📦' },
+        'laundry': { icon: 'shirt', emoji: '👕' },
+        'appliance': { icon: 'plug', emoji: '🔌' },
+        // 健康养生
+        'diet_health': { icon: 'apple', emoji: '🥗' },
+        'exercise': { icon: 'dumbbell', emoji: '🏋️' },
+        'first_aid': { icon: 'heart', emoji: '🩹' },
+        'mental_health': { icon: 'brain', emoji: '🧠' },
+        // 数码科技
+        'phone_tips': { icon: 'smartphone', emoji: '📲' },
+        'computer_tips': { icon: 'monitor', emoji: '💻' },
+        'software': { icon: 'download', emoji: '💿' },
+        'cyber_security': { icon: 'shield', emoji: '🔒' },
+        // 出行交通
+        'travel': { icon: 'mapPin', emoji: '🗺️' },
+        'driving': { icon: 'car', emoji: '🚙' },
+        'public_transport': { icon: 'bus', emoji: '🚌' },
+        'flight_hotel': { icon: 'plane', emoji: '✈️' },
+        // 购物消费
+        'shopping': { icon: 'shoppingBag', emoji: '🛍️' },
+        'bargain': { icon: 'tag', emoji: '🏷️' },
+        'anti_fraud': { icon: 'alertTriangle', emoji: '⚠️' },
+        'online_shopping': { icon: 'globe', emoji: '🌐' },
+        // 社交礼仪
+        'workplace': { icon: 'briefcase', emoji: '💼' },
+        'dining': { icon: 'utensils', emoji: '🍽️' },
+        'communication': { icon: 'messageCircle', emoji: '💬' },
+        'interpersonal': { icon: 'users', emoji: '👥' },
+        // 法律常识
+        'consumer_rights': { icon: 'scale', emoji: '⚖️' },
+        'labor_rights': { icon: 'fileText', emoji: '📋' },
+        'contract': { icon: 'fileSignature', emoji: '📝' },
+        'legal_aid': { icon: 'lifeBuoy', emoji: '🆘' },
+        // 理财知识
+        'savings': { icon: 'piggyBank', emoji: '🐷' },
+        'fund': { icon: 'trendingUp', emoji: '📈' },
+        'credit_card': { icon: 'creditCard', emoji: '💳' },
+        'anti_scam': { icon: 'eye', emoji: '👁️' },
+        // 生活窍门
+        'stain_removal': { icon: 'target', emoji: '🎯' },
+        'repair': { icon: 'wrench', emoji: '🔧' },
+        'recycling': { icon: 'recycle', emoji: '♻️' },
+        'seasonal': { icon: 'sun', emoji: '☀️' }
+    };
     for (let i = 0; i < cat.subCategories.length; i++) {
         const sub = cat.subCategories[i];
-        const chip = createEl('button', 'chip', sub.name);
+        const subIcon = subIcons[sub.id];
+        const chip = createEl('button', 'chip', (subIcon ? subIcon.emoji + ' ' : '') + sub.name);
         chip.setAttribute('data-sub', sub.id);
         subTabsWrap.appendChild(chip);
     }
