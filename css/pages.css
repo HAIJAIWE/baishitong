@@ -1388,6 +1388,18 @@
     scrollbar-width: none;
 }
 .tips-tabs::-webkit-scrollbar { display: none; }
+
+/* 中类标签栏 */
+.tips-sub-tabs {
+    display: flex;
+    gap: var(--space-xs);
+    padding: 0 var(--space-md) var(--space-sm);
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    animation: fadeIn 0.2s var(--ease-out);
+}
+.tips-sub-tabs::-webkit-scrollbar { display: none; }
 /* 标签统一使用 .chip */
 
 .tips-content {

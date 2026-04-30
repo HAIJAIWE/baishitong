@@ -1,12 +1,13 @@
 // ==================== tips.js - 生活常识 ====================
 // 百事通 v1.0
-// 安全原则：所有用户输入和动态内容用 textContent 渲染
+// 三级导航：大类 → 中类 → 内容
 
 import { clearContainer, createEl, showModal, hideModal } from '../utils/ui.js';
 import { icon } from '../utils/icons.js';
 
 let tipsData = null;
-let currentCategory = null;
+let currentCategory = null;   // 当前大类 ID
+let currentSubCat = null;     // 当前中类 ID（null=全部中类）
 let searchKeyword = '';
 
 /**
@@ -16,7 +17,6 @@ export function initTips() {
     const page = document.getElementById('page-tips');
     if (!page) return;
 
-    // 加载数据（缓存）
     if (!tipsData) {
         fetch('js/data/tips_cn.json')
             .then(function(res) { return res.json(); })
@@ -45,7 +45,6 @@ window.initTips = initTips;
 
 /**
  * 渲染页面
- * @param {HTMLElement} page
  */
 function renderPage(page) {
     clearContainer(page);
@@ -63,36 +62,30 @@ function renderPage(page) {
     // 搜索栏
     const searchWrap = createEl('div', 'tips-search');
     const searchBox = createEl('div', 'search-box');
-
     const searchIcon = createEl('span', 'search-icon');
     searchIcon.appendChild(icon('search', 16));
-
     const searchInput = document.createElement('input');
     searchInput.className = 'input';
     searchInput.type = 'text';
     searchInput.placeholder = '搜索生活常识...';
     searchInput.id = 'tipsSearchInput';
     searchInput.setAttribute('aria-label', '搜索生活常识');
-
     const searchClear = createEl('span', 'search-clear', '×');
     searchClear.id = 'tipsSearchClear';
-
     searchBox.appendChild(searchIcon);
     searchBox.appendChild(searchInput);
     searchBox.appendChild(searchClear);
     searchWrap.appendChild(searchBox);
     page.appendChild(searchWrap);
 
-    // 分类标签
+    // 大类标签栏
     const tabsWrap = createEl('div', 'tips-tabs');
     tabsWrap.id = 'tipsTabs';
-
     const allBtn = createEl('button', 'chip active');
     allBtn.appendChild(icon('clipboardList', 14));
     allBtn.appendChild(document.createTextNode(' 全部'));
     allBtn.setAttribute('data-cat', 'all');
     tabsWrap.appendChild(allBtn);
-
     for (let i = 0; i < tipsData.categories.length; i++) {
         const cat = tipsData.categories[i];
         const btn = createEl('button', 'chip', cat.icon + ' ' + cat.name);
@@ -100,6 +93,12 @@ function renderPage(page) {
         tabsWrap.appendChild(btn);
     }
     page.appendChild(tabsWrap);
+
+    // 中类标签栏（选中大类后显示）
+    const subTabsWrap = createEl('div', 'tips-sub-tabs');
+    subTabsWrap.id = 'tipsSubTabs';
+    subTabsWrap.style.display = 'none';
+    page.appendChild(subTabsWrap);
 
     // 内容区域
     const content = createEl('div', 'tips-content');
@@ -115,29 +114,42 @@ function renderPage(page) {
 
 /**
  * 绑定事件
- * @param {HTMLElement} page
  */
 function bindEvents(page) {
-    // 分类切换
+    // 大类切换
     const tabs = page.querySelector('#tipsTabs');
     tabs.addEventListener('click', function(e) {
         const btn = e.target.closest('.chip');
         if (!btn) return;
-        // 更新active
         tabs.querySelectorAll('.chip').forEach(function(t) { t.classList.remove('active'); });
         btn.classList.add('active');
         const catId = btn.getAttribute('data-cat');
         currentCategory = catId;
+        currentSubCat = null;
         searchKeyword = '';
         const input = page.querySelector('#tipsSearchInput');
         if (input) input.value = '';
         page.querySelector('#tipsSearchClear').classList.remove('visible');
 
         if (catId === 'all') {
+            hideSubTabs(page);
             showAll();
         } else {
-            showCategory(catId);
+            showSubTabs(page, catId);
+            showCategoryContent(catId, null);
         }
+    });
+
+    // 中类切换
+    const subTabs = page.querySelector('#tipsSubTabs');
+    subTabs.addEventListener('click', function(e) {
+        const btn = e.target.closest('.chip');
+        if (!btn) return;
+        subTabs.querySelectorAll('.chip').forEach(function(t) { t.classList.remove('active'); });
+        btn.classList.add('active');
+        const subId = btn.getAttribute('data-sub');
+        currentSubCat = subId === 'all' ? null : subId;
+        showCategoryContent(currentCategory, currentSubCat);
     });
 
     // 搜索
@@ -150,9 +162,8 @@ function bindEvents(page) {
             doSearch(searchKeyword);
         } else {
             clearBtn.classList.remove('visible');
-            // 恢复当前分类
             if (currentCategory && currentCategory !== 'all') {
-                showCategory(currentCategory);
+                showCategoryContent(currentCategory, currentSubCat);
             } else {
                 showAll();
             }
@@ -163,11 +174,53 @@ function bindEvents(page) {
         searchKeyword = '';
         this.classList.remove('visible');
         if (currentCategory && currentCategory !== 'all') {
-            showCategory(currentCategory);
+            showCategoryContent(currentCategory, currentSubCat);
         } else {
             showAll();
         }
     });
+}
+
+/**
+ * 显示中类标签栏
+ */
+function showSubTabs(page, catId) {
+    const subTabsWrap = page.querySelector('#tipsSubTabs');
+    clearContainer(subTabsWrap);
+    subTabsWrap.style.display = 'block';
+
+    let cat = null;
+    for (let i = 0; i < tipsData.categories.length; i++) {
+        if (tipsData.categories[i].id === catId) { cat = tipsData.categories[i]; break; }
+    }
+    if (!cat || !cat.subCategories) {
+        subTabsWrap.style.display = 'none';
+        return;
+    }
+
+    // "全部" Chip
+    const allChip = createEl('button', 'chip active');
+    allChip.appendChild(icon('layers', 14));
+    allChip.appendChild(document.createTextNode(' 全部'));
+    allChip.setAttribute('data-sub', 'all');
+    subTabsWrap.appendChild(allChip);
+
+    // 各中类 Chip
+    for (let i = 0; i < cat.subCategories.length; i++) {
+        const sub = cat.subCategories[i];
+        const chip = createEl('button', 'chip', sub.name);
+        chip.setAttribute('data-sub', sub.id);
+        subTabsWrap.appendChild(chip);
+    }
+}
+
+/**
+ * 隐藏中类标签栏
+ */
+function hideSubTabs(page) {
+    const subTabsWrap = page.querySelector('#tipsSubTabs');
+    subTabsWrap.style.display = 'none';
+    clearContainer(subTabsWrap);
 }
 
 /**
@@ -178,15 +231,14 @@ function showAll() {
     clearContainer(content);
     for (let i = 0; i < tipsData.categories.length; i++) {
         const cat = tipsData.categories[i];
-        content.appendChild(renderCategory(cat));
+        content.appendChild(renderCategory(cat, null));
     }
 }
 
 /**
- * 显示单个分类
- * @param {string} catId
+ * 显示某个大类的内容（可按中类过滤）
  */
-function showCategory(catId) {
+function showCategoryContent(catId, subId) {
     let cat = null;
     for (let i = 0; i < tipsData.categories.length; i++) {
         if (tipsData.categories[i].id === catId) { cat = tipsData.categories[i]; break; }
@@ -194,15 +246,15 @@ function showCategory(catId) {
     if (!cat) return;
     const content = document.getElementById('tipsContent');
     clearContainer(content);
-    content.appendChild(renderCategory(cat));
+    content.appendChild(renderCategory(cat, subId));
 }
 
 /**
  * 渲染分类区块
- * @param {Object} cat
- * @returns {HTMLElement}
+ * @param {Object} cat - 分类数据
+ * @param {string|null} subId - 中类过滤（null=全部中类）
  */
-function renderCategory(cat) {
+function renderCategory(cat, subId) {
     const wrap = createEl('div', 'tips-category');
 
     const catHeader = createEl('div', 'tips-cat-header');
@@ -216,6 +268,9 @@ function renderCategory(cat) {
 
     for (let i = 0; i < cat.subCategories.length; i++) {
         const sub = cat.subCategories[i];
+        // 如果指定了中类过滤，只显示对应中类
+        if (subId && sub.id !== subId) continue;
+
         const subWrap = createEl('div', 'tips-sub');
         const subName = createEl('h3', 'tips-sub-name', sub.name);
         subWrap.appendChild(subName);
@@ -232,9 +287,7 @@ function renderCategory(cat) {
 }
 
 /**
- * 渲染单条常识卡片（列表模式，只显示标题）
- * @param {Object} tip
- * @returns {HTMLElement}
+ * 渲染单条常识卡片
  */
 function renderTipCard(tip) {
     const card = createEl('div', 'tip-card');
@@ -247,7 +300,6 @@ function renderTipCard(tip) {
     const title = createEl('h4', 'tip-title', tip.title);
     header.appendChild(title);
 
-    // 右侧箭头提示可点击
     const arrow = createEl('span', '');
     arrow.textContent = '›';
     arrow.style.cssText = 'font-size:20px;color:var(--text-tertiary);margin-left:auto;flex-shrink:0;';
@@ -256,11 +308,9 @@ function renderTipCard(tip) {
 
     card.appendChild(header);
 
-    // 只显示前一行内容作为预览
     const preview = createEl('p', 'tip-preview', tip.content.length > 40 ? tip.content.substring(0, 40) + '...' : tip.content);
     card.appendChild(preview);
 
-    // 点击弹窗显示详情
     card.addEventListener('click', function() {
         showTipDetail(tip);
     });
@@ -270,7 +320,6 @@ function renderTipCard(tip) {
 
 /**
  * 弹窗显示常识详情
- * @param {Object} tip
  */
 function showTipDetail(tip) {
     const html = '<div class="tip-detail-modal" id="tipDetailModal"></div>';
@@ -279,19 +328,16 @@ function showTipDetail(tip) {
     const modal = document.getElementById('tipDetailModal');
     if (!modal) return;
 
-    // 标题
     const title = createEl('h2', 'tip-detail-title');
     title.textContent = tip.title;
     title.style.cssText = 'font-size:var(--text-lg);font-weight:var(--font-bold);color:var(--text-primary);margin-bottom:var(--space-3);line-height:1.4;';
     modal.appendChild(title);
 
-    // 内容
     const content = createEl('p', 'tip-detail-content');
     content.textContent = tip.content;
     content.style.cssText = 'font-size:var(--text-base);color:var(--text-secondary);line-height:1.8;margin-bottom:var(--space-4);';
     modal.appendChild(content);
 
-    // 标签
     if (tip.tags && tip.tags.length > 0) {
         const tagsWrap = createEl('div', 'tip-tags');
         for (let i = 0; i < tip.tags.length; i++) {
@@ -301,7 +347,6 @@ function showTipDetail(tip) {
         modal.appendChild(tagsWrap);
     }
 
-    // 关闭按钮
     const closeBtn = createEl('button', 'btn btn-primary');
     closeBtn.style.cssText = 'width:100%;margin-top:var(--space-4);';
     closeBtn.textContent = '关闭';
@@ -313,7 +358,6 @@ function showTipDetail(tip) {
 
 /**
  * 搜索
- * @param {string} keyword
  */
 function doSearch(keyword) {
     const results = [];
@@ -361,7 +405,6 @@ function doSearch(keyword) {
             const catLabel = createEl('span', 'tip-card-cat', r.catName + ' · ' + r.subName);
             cardHeader.appendChild(catLabel);
 
-            // 箭头
             const arrow = createEl('span', '');
             arrow.textContent = '›';
             arrow.style.cssText = 'font-size:20px;color:var(--text-tertiary);margin-left:auto;flex-shrink:0;';
