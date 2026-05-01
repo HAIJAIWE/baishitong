@@ -440,12 +440,12 @@ function showAboutModal() {
     features.style.cssText = 'font-size:var(--text-sm);color:var(--text-secondary);line-height:2;';
 
     const featureItems = [
-        '涵盖 1669 个职业详细数据',
-        '8大行业分类，54个中类',
-        '800 条生活常识（烹饪/收纳/养生/数码等）',
+        '涵盖 1670 个职业详细数据',
+        '8大行业分类，82个中类',
+        '2000 条生活常识（烹饪/收纳/养生/数码等）',
+        '120题霍兰德职业测评（每次随机30题）',
         '7个AI智能体（职业顾问/简历/面试/学习规划等）',
         'AI 多模型支持（DeepSeek/通义千问/智谱GLM/Kimi等）',
-        '职业测评（霍兰德RIASEC）',
         '职业对比分析',
         '学习路径规划',
         '暗色/亮色主题切换'

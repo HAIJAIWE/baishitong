@@ -488,7 +488,7 @@ function createAnnouncement() {
     section.appendChild(icon);
 
     var text = createEl('div', 'announcement-text');
-    text.textContent = '🎉 百事通现已收录2000条生活常识、1669个职业数据、7个AI智能体，持续优化中！';
+    text.textContent = '🎉 已收录2000条生活常识、1670个职业、120题测评，持续优化中！';
     section.appendChild(text);
 
     var closeBtn = createEl('span', 'announcement-close');
