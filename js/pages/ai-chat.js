@@ -192,10 +192,15 @@ function renderLoginView(container) {
 
     const desc = createEl('p', '');
     desc.textContent = '登录后即可使用 AI 问答功能';
-    desc.style.cssText = 'color:var(--text-secondary);margin-bottom:var(--space-6);';
+    desc.style.cssText = 'color:var(--text-secondary);margin-bottom:var(--space-2);';
+
+    const localTip = createEl('p', '');
+    localTip.textContent = '💡 账号数据仅保存在本机，随便填个用户名和密码注册即可';
+    localTip.style.cssText = 'color:var(--text-tertiary);font-size:var(--text-xs);margin-bottom:var(--space-6);';
 
     card.appendChild(iconEl);
     card.appendChild(desc);
+    card.appendChild(localTip);
 
     // 登录表单
     const form = createEl('div', '');
