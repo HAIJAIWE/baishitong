@@ -306,32 +306,70 @@ function showCategoryContent(catId, subId) {
  * 渲染分类区块
  * @param {Object} cat - 分类数据
  * @param {string|null} subId - 中类过滤（null=全部中类）
+ * @param {number} [initialCount=10] - 每个子分类初始显示条数
  */
-function renderCategory(cat, subId) {
-    const wrap = createEl('div', 'tips-category');
+function renderCategory(cat, subId, initialCount) {
+    var showCount = (typeof initialCount === 'number') ? initialCount : 10;
+    var wrap = createEl('div', 'tips-category');
 
-    const catHeader = createEl('div', 'tips-cat-header');
-    const catIcon = createEl('span', 'tips-cat-icon', cat.icon);
-    const catName = createEl('h2', 'tips-cat-name', cat.name);
-    const catDesc = createEl('span', 'tips-cat-desc', cat.desc);
+    var catHeader = createEl('div', 'tips-cat-header');
+    var catIcon = createEl('span', 'tips-cat-icon', cat.icon);
+    var catName = createEl('h2', 'tips-cat-name', cat.name);
+    var catDesc = createEl('span', 'tips-cat-desc', cat.desc);
     catHeader.appendChild(catIcon);
     catHeader.appendChild(catName);
     catHeader.appendChild(catDesc);
     wrap.appendChild(catHeader);
 
-    for (let i = 0; i < cat.subCategories.length; i++) {
-        const sub = cat.subCategories[i];
-        // 如果指定了中类过滤，只显示对应中类
+    for (var i = 0; i < cat.subCategories.length; i++) {
+        var sub = cat.subCategories[i];
         if (subId && sub.id !== subId) continue;
 
-        const subWrap = createEl('div', 'tips-sub');
-        const subName = createEl('h3', 'tips-sub-name', sub.name);
+        var subWrap = createEl('div', 'tips-sub');
+        var subName = createEl('h3', 'tips-sub-name', sub.name);
         subWrap.appendChild(subName);
 
-        const list = createEl('div', 'tips-list');
-        for (let j = 0; j < sub.tips.length; j++) {
-            list.appendChild(renderTipCard(sub.tips[j]));
+        var list = createEl('div', 'tips-list');
+        var tips = sub.tips;
+        var displayCount = Math.min(tips.length, showCount);
+
+        for (var j = 0; j < displayCount; j++) {
+            list.appendChild(renderTipCard(tips[j]));
         }
+
+        // 如果还有更多，显示"展开更多"按钮
+        if (tips.length > showCount) {
+            var remaining = tips.length - showCount;
+            var moreBtn = createEl('button', '');
+            moreBtn.style.cssText = 'width:100%;padding:var(--space-2);margin-top:var(--space-2);background:var(--bg-tertiary);border:1px dashed var(--border);border-radius:var(--radius-lg);color:var(--text-tertiary);font-size:var(--text-xs);cursor:pointer;text-align:center;';
+            moreBtn.textContent = '展开更多（还有' + remaining + '条）';
+            moreBtn.setAttribute('data-sub-id', sub.id);
+            moreBtn.setAttribute('data-cat-id', cat.id);
+            moreBtn.addEventListener('click', function() {
+                var btn = this;
+                var catId = btn.getAttribute('data-cat-id');
+                var sId = btn.getAttribute('data-sub-id');
+                // 找到对应子分类，渲染全部
+                var targetCat = null;
+                for (var c = 0; c < tipsData.categories.length; c++) {
+                    if (tipsData.categories[c].id === catId) { targetCat = tipsData.categories[c]; break; }
+                }
+                if (!targetCat) return;
+                var targetSub = null;
+                for (var s = 0; s < targetCat.subCategories.length; s++) {
+                    if (targetCat.subCategories[s].id === sId) { targetSub = targetCat.subCategories[s]; break; }
+                }
+                if (!targetSub) return;
+                // 移除按钮
+                btn.remove();
+                // 追加剩余卡片
+                for (var k = showCount; k < targetSub.tips.length; k++) {
+                    list.appendChild(renderTipCard(targetSub.tips[k]));
+                }
+            });
+            list.appendChild(moreBtn);
+        }
+
         subWrap.appendChild(list);
         wrap.appendChild(subWrap);
     }
