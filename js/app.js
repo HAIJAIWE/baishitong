@@ -85,7 +85,7 @@ async function continueInit() {
         checkAchievement('streak_30');
         initSound();
 
-        console.log('百事通 v1.0 初始化完成');
+        console.log('百事通 v2.0 初始化完成');
     } catch (e) {
         console.error('应用初始化失败:', e);
         hideLoadingSkeleton();

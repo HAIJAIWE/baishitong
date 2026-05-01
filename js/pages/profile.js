@@ -46,7 +46,7 @@ function renderProfile(container) {
 
     // 4. 版本号
     const version = createEl('div', 'version-info');
-    version.textContent = '百事通 v1.0';
+    version.textContent = '百事通 v2.0';
     container.appendChild(version);
 }
 
@@ -158,6 +158,12 @@ function createSettingsList() {
     const list = createEl('div', 'settings-list');
 
     const items = [
+        {
+            icon: 'calendar',
+            name: '每日签到',
+            desc: '签到打卡赢积分',
+            action: 'checkin'
+        },
         {
             icon: 'palette',
             name: '主题切换',
@@ -364,6 +370,11 @@ function createSettingsList() {
  */
 function handleSettingAction(action) {
     switch (action) {
+        case 'checkin':
+            resetPageInit('page-checkin');
+            navigateTo('page-checkin');
+            break;
+
         case 'ai-settings':
             // 跳转到 AI 页面
             resetPageInit('page-ai');
@@ -452,7 +463,7 @@ function showAboutModal() {
     panel.appendChild(aboutIcon);
 
     const version = createEl('div', 'about-version');
-    version.textContent = '百事通 v1.0';
+    version.textContent = '百事通 v2.0';
     panel.appendChild(version);
 
     const desc = createEl('div', 'about-desc');
@@ -463,7 +474,7 @@ function showAboutModal() {
     features.style.cssText = 'font-size:var(--text-sm);color:var(--text-secondary);line-height:2;';
 
     const featureItems = [
-        '涵盖 1670 个职业详细数据',
+        '涵盖 1669 个职业详细数据',
         '8大行业分类，82个中类',
         '2000 条生活常识（烹饪/收纳/养生/数码等）',
         '120题霍兰德职业测评（每次随机30题）',
