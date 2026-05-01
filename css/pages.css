@@ -237,7 +237,7 @@
 .quick-section { padding: 0 var(--space-4) var(--space-6); }
 .quick-grid {
     display: grid;
-    grid-template-columns: repeat(7, 1fr);
+    grid-template-columns: repeat(4, 1fr);
     gap: var(--space-3);
 }
 .quick-item {
@@ -259,7 +259,7 @@
     align-items: center;
     justify-content: center;
 }
-.quick-label { font-size: 11px; color: var(--text-secondary); font-weight: var(--font-medium); }
+.quick-label { font-size: 12px; color: var(--text-secondary); font-weight: var(--font-medium); }
 
 /* 内容区块 */
 .content-section { padding: 0 var(--space-4) var(--space-6); }
