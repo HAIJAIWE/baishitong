@@ -555,7 +555,7 @@ function showSupportModal() {
     // 说明
     const desc = document.createElement('p');
     desc.style.cssText = 'font-size:var(--text-sm);color:var(--text-secondary);margin:0 0 var(--space-5);line-height:1.6;';
-    desc.textContent = '如果百事通对你有帮助，可以随缘请我喝杯奶茶，就当是小小的创作鼓励。\n金额不分多少，每份都是心意，非常感谢～\n\n百事通有什么缺点或者哪里不完善的地方，可以过来找我，优化一下。';
+    desc.textContent = '如果百事通对你有帮助，可以随缘请我喝杯奶茶，就当是小小的创作鼓励。\n金额不分多少，每份都是心意，非常感谢～\n\n赞助完全自愿，不影响您使用任何功能。\n\n百事通有什么缺点或者哪里不完善的地方，可以过来找我，优化一下。';
     wrap.appendChild(desc);
 
     // 资金用途
@@ -565,7 +565,7 @@ function showSupportModal() {
     useTitle.style.cssText = 'font-size:var(--text-xs);font-weight:600;color:var(--text-tertiary);margin-bottom:var(--space-2);';
     useTitle.textContent = '你的支持将用于';
     useWrap.appendChild(useTitle);
-    var uses = ['持续更新和维护百事通', '服务器和域名费用', '新功能开发'];
+    var uses = ['持续更新和维护百事通', '新功能开发'];
     for (var i = 0; i < uses.length; i++) {
         var useItem = document.createElement('div');
         useItem.style.cssText = 'font-size:var(--text-sm);color:var(--text-secondary);padding:2px 0;display:flex;align-items:center;gap:6px;';
