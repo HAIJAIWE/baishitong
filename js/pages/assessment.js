@@ -1,5 +1,6 @@
 // ==================== assessment.js - 职业测评页面 ====================
-// 百事通 v1.0 - 基于霍兰德职业兴趣理论的职业测评
+// 百事通 v2.0 - 基于霍兰德职业兴趣理论的职业测评
+// 支持120题题库，随机抽30题，联动1669个职业数据库
 // 安全原则：所有动态内容用 textContent 渲染
 
 import { clearContainer, createEl, showToast } from '../utils/ui.js';
@@ -7,11 +8,10 @@ import { navigateTo } from '../router.js';
 import { addPoints } from '../state.js';
 import { icon } from '../utils/icons.js';
 
-// ==================== 测评题目 ====================
-// 基于霍兰德 RIASEC 理论，结合中国职业分类体系
+// ==================== 内置回退题目（10题） ====================
+// 当 JSON 加载失败时使用
 
-const QUESTIONS = [
-    // 第1题：兴趣偏好
+const FALLBACK_QUESTIONS = [
     {
         id: 1,
         title: '你更喜欢哪种类型的活动？',
@@ -22,7 +22,6 @@ const QUESTIONS = [
             { text: '帮助别人解决问题', scores: { R: 0, I: 0, A: 0, S: 3, E: 1, C: 0 } }
         ]
     },
-    // 第2题：工作环境
     {
         id: 2,
         title: '你理想的工作环境是？',
@@ -33,7 +32,6 @@ const QUESTIONS = [
             { text: '办公室或学校，与人交流', scores: { R: 0, I: 0, A: 0, S: 2, E: 1, C: 1 } }
         ]
     },
-    // 第3题：团队角色
     {
         id: 3,
         title: '在团队合作中，你通常扮演什么角色？',
@@ -44,7 +42,6 @@ const QUESTIONS = [
             { text: '协调者，组织大家合作', scores: { R: 0, I: 0, A: 0, S: 2, E: 2, C: 0 } }
         ]
     },
-    // 第4题：解决问题方式
     {
         id: 4,
         title: '遇到问题时，你倾向于？',
@@ -55,7 +52,6 @@ const QUESTIONS = [
             { text: '找人商量，集思广益', scores: { R: 0, I: 0, A: 0, S: 3, E: 1, C: 0 } }
         ]
     },
-    // 第5题：空闲时间
     {
         id: 5,
         title: '空闲时间你最喜欢做什么？',
@@ -66,7 +62,6 @@ const QUESTIONS = [
             { text: '和朋友聚会或做志愿者', scores: { R: 0, I: 0, A: 0, S: 3, E: 1, C: 0 } }
         ]
     },
-    // 第6题：价值观
     {
         id: 6,
         title: '你最看重工作中的什么？',
@@ -77,7 +72,6 @@ const QUESTIONS = [
             { text: '帮助他人、服务社会', scores: { R: 0, I: 0, A: 0, S: 3, E: 1, C: 0 } }
         ]
     },
-    // 第7题：沟通方式
     {
         id: 7,
         title: '你更擅长哪种沟通方式？',
@@ -88,7 +82,6 @@ const QUESTIONS = [
             { text: '耐心倾听并给予建议', scores: { R: 0, I: 0, A: 0, S: 3, E: 0, C: 1 } }
         ]
     },
-    // 第8题：压力应对
     {
         id: 8,
         title: '面对压力和挑战时，你会？',
@@ -99,7 +92,6 @@ const QUESTIONS = [
             { text: '寻求他人支持和帮助', scores: { R: 0, I: 0, A: 0, S: 3, E: 0, C: 0 } }
         ]
     },
-    // 第9题：学习偏好
     {
         id: 9,
         title: '你更喜欢哪种学习方式？',
@@ -110,7 +102,6 @@ const QUESTIONS = [
             { text: '参加小组讨论或培训班', scores: { R: 0, I: 0, A: 0, S: 3, E: 1, C: 0 } }
         ]
     },
-    // 第10题：长远目标
     {
         id: 10,
         title: '你的长远职业目标是？',
@@ -187,11 +178,167 @@ const RIASEC_TYPES = {
 let currentQuestion = 0;
 let answers = [];
 let scores = { R: 0, I: 0, A: 0, S: 0, E: 0, C: 0 };
+let activeQuestions = [];  // 当前测评使用的题目（从题库中抽取的）
+let jobRiasecMap = null;   // 职业-RIASEC映射数据
+let useExtendedBank = false; // 是否使用了扩展题库
+
+// ==================== 数据加载 ====================
+
+/**
+ * 从JSON加载扩展题库
+ * @returns {Promise<Array|null>}
+ */
+async function loadExtendedQuestions() {
+    try {
+        const resp = await fetch('js/data/assessment_questions.json');
+        if (!resp.ok) return null;
+        const data = await resp.json();
+        if (data && data.questions && data.questions.length > 0) {
+            return data.questions;
+        }
+        return null;
+    } catch (e) {
+        console.warn('[Assessment] 扩展题库加载失败，使用内置题目:', e);
+        return null;
+    }
+}
+
+/**
+ * 从JSON加载职业-RIASEC映射
+ * @returns {Promise<Object|null>}
+ */
+async function loadJobRiasecMap() {
+    try {
+        const resp = await fetch('js/data/job_riasec_map.json');
+        if (!resp.ok) return null;
+        const data = await resp.json();
+        if (data && data.mapping) {
+            return data.mapping;
+        }
+        return null;
+    } catch (e) {
+        console.warn('[Assessment] 职业映射加载失败:', e);
+        return null;
+    }
+}
+
+/**
+ * Fisher-Yates 洗牌算法
+ * @param {Array} arr
+ * @returns {Array}
+ */
+function shuffleArray(arr) {
+    var a = arr.slice();
+    for (var i = a.length - 1; i > 0; i--) {
+        var j = Math.floor(Math.random() * (i + 1));
+        var tmp = a[i];
+        a[i] = a[j];
+        a[j] = tmp;
+    }
+    return a;
+}
+
+/**
+ * 从题库中随机抽取指定数量的题目
+ * 确保覆盖多种维度（interest/activity/skill/value）
+ * @param {Array} allQuestions
+ * @param {number} count
+ * @returns {Array}
+ */
+function selectQuestions(allQuestions, count) {
+    // 按维度分组
+    var byDimension = {};
+    allQuestions.forEach(function(q) {
+        var dim = q.dimension || 'interest';
+        if (!byDimension[dim]) byDimension[dim] = [];
+        byDimension[dim].push(q);
+    });
+
+    var selected = [];
+    var dimensions = Object.keys(byDimension);
+
+    // 每个维度至少抽取一定数量，确保多样性
+    var perDim = Math.floor(count / dimensions.length);
+    var remainder = count - perDim * dimensions.length;
+
+    dimensions.forEach(function(dim, idx) {
+        var pool = shuffleArray(byDimension[dim]);
+        var take = perDim + (idx < remainder ? 1 : 0);
+        selected = selected.concat(pool.slice(0, take));
+    });
+
+    // 如果还不够（某些维度题目不足），从剩余题目中补充
+    if (selected.length < count) {
+        var selectedIds = {};
+        selected.forEach(function(q) { selectedIds[q.id] = true; });
+        var remaining = allQuestions.filter(function(q) { return !selectedIds[q.id]; });
+        remaining = shuffleArray(remaining);
+        selected = selected.concat(remaining.slice(0, count - selected.length));
+    }
+
+    // 最终打乱顺序
+    return shuffleArray(selected).slice(0, count);
+}
+
+/**
+ * 根据RIASEC得分匹配推荐职业
+ * @param {Object} resultScores - { R: n, I: n, A: n, S: n, E: n, C: n }
+ * @param {Object} mapping - job_riasec_map
+ * @returns {Array} 排序后的推荐职业列表
+ */
+function matchJobs(resultScores, mapping) {
+    if (!mapping) return [];
+
+    // 计算用户各维度百分比
+    var total = 0;
+    Object.keys(resultScores).forEach(function(k) { total += resultScores[k]; });
+    if (total === 0) return [];
+
+    var userPct = {};
+    Object.keys(resultScores).forEach(function(k) {
+        userPct[k] = resultScores[k] / total;
+    });
+
+    // 对每个职业计算匹配度
+    var jobMatches = [];
+    Object.keys(mapping).forEach(function(jobId) {
+        var job = mapping[jobId];
+        var primary = job.primary;
+        var secondary = job.secondary;
+
+        // 匹配度 = 主要类型权重 * 用户该类型百分比 + 次要类型权重 * 用户该类型百分比
+        var matchScore = userPct[primary] * 0.6 + userPct[secondary] * 0.3;
+
+        // 如果用户的top2类型与职业的primary/secondary匹配，额外加分
+        var sortedUser = Object.keys(userPct).sort(function(a, b) {
+            return userPct[b] - userPct[a];
+        });
+        if (sortedUser[0] === primary) matchScore += 0.05;
+        if (sortedUser[1] === secondary) matchScore += 0.03;
+
+        jobMatches.push({
+            id: jobId,
+            name: job.name || jobId,
+            primary: primary,
+            secondary: secondary,
+            matchScore: Math.min(0.99, matchScore)
+        });
+    });
+
+    // 按匹配度降序排列
+    jobMatches.sort(function(a, b) {
+        return b.matchScore - a.matchScore;
+    });
+
+    return jobMatches;
+}
+
+// ==================== 初始化 ====================
 
 /**
  * 初始化测评页面
  */
-export function initAssessment() {
+export async function initAssessment() {
     const container = document.getElementById('page-assessment');
     if (!container) return;
 
@@ -199,6 +346,18 @@ export function initAssessment() {
     currentQuestion = 0;
     answers = [];
     scores = { R: 0, I: 0, A: 0, S: 0, E: 0, C: 0 };
+
+    // 尝试加载扩展题库和职业映射
+    var extendedQuestions = await loadExtendedQuestions();
+    jobRiasecMap = await loadJobRiasecMap();
+
+    if (extendedQuestions && extendedQuestions.length >= 30) {
+        useExtendedBank = true;
+        activeQuestions = selectQuestions(extendedQuestions, 30);
+    } else {
+        useExtendedBank = false;
+        activeQuestions = FALLBACK_QUESTIONS.slice();
+    }
 
     renderStartPage(container);
 }
@@ -219,16 +378,29 @@ function renderStartPage(container) {
     page.appendChild(title);
 
     const desc = createEl('p', 'assess-start-desc');
-    desc.textContent = '基于霍兰德职业兴趣理论，通过 10 道精选题目，发现最适合你的职业方向';
+    if (useExtendedBank) {
+        desc.textContent = '基于霍兰德职业兴趣理论，从 120 道专业题库中随机抽取 30 题，智能匹配 1600+ 职业方向';
+    } else {
+        desc.textContent = '基于霍兰德职业兴趣理论，通过精选题目，发现最适合你的职业方向';
+    }
     page.appendChild(desc);
 
     const features = createEl('div', 'assess-features');
 
-    const featureItems = [
-        { icon: 'timer', text: '约 2 分钟完成' },
-        { icon: 'target', text: '10 道精选题目' },
-        { icon: 'barChart3', text: '个性化职业推荐' }
-    ];
+    var featureItems;
+    if (useExtendedBank) {
+        featureItems = [
+            { icon: 'timer', text: '约 5 分钟完成' },
+            { icon: 'target', text: '30 / 120 随机题目' },
+            { icon: 'barChart3', text: '1600+ 职业智能匹配' }
+        ];
+    } else {
+        featureItems = [
+            { icon: 'timer', text: '约 2 分钟完成' },
+            { icon: 'target', text: '10 道精选题目' },
+            { icon: 'barChart3', text: '个性化职业推荐' }
+        ];
+    }
 
     featureItems.forEach(function(f) {
         const item = createEl('div', 'assess-feature');
@@ -244,7 +416,7 @@ function renderStartPage(container) {
     page.appendChild(features);
 
     const btn = createEl('button', 'assess-start-btn');
-    btn.textContent = '开始测评 →';
+    btn.textContent = '开始测评 \u2192';
     btn.addEventListener('click', function() {
         renderQuestionPage(container);
     });
@@ -274,19 +446,19 @@ function renderQuestionPage(container) {
     // 进度条
     const progress = createEl('div', 'assess-progress');
     const bar = createEl('div', 'assess-progress-bar');
-    const percent = Math.round(((currentQuestion) / QUESTIONS.length) * 100);
+    const percent = Math.round(((currentQuestion) / activeQuestions.length) * 100);
     bar.style.width = percent + '%';
     const label = createEl('div', 'assess-progress-label');
-    label.textContent = (currentQuestion + 1) + ' / ' + QUESTIONS.length;
+    label.textContent = (currentQuestion + 1) + ' / ' + activeQuestions.length;
     progress.appendChild(bar);
     progress.appendChild(label);
     page.appendChild(progress);
 
     // 题目
-    const q = QUESTIONS[currentQuestion];
+    const q = activeQuestions[currentQuestion];
 
     const qTitle = createEl('h3', 'assess-q-title');
-    qTitle.textContent = q.title;
+    qTitle.textContent = q.text || q.title;
     page.appendChild(qTitle);
 
     // 选项
@@ -319,7 +491,7 @@ function renderQuestionPage(container) {
             // 延迟跳转下一题
             setTimeout(function() {
                 currentQuestion++;
-                if (currentQuestion < QUESTIONS.length) {
+                if (currentQuestion < activeQuestions.length) {
                     clearContainer(container);
                     renderQuestionPage(container);
                 } else {
@@ -340,11 +512,12 @@ function renderQuestionPage(container) {
 
     // 返回按钮
     const backBtn = createEl('div', 'assess-back');
-    backBtn.textContent = '← 返回';
+    backBtn.textContent = '\u2190 返回';
     backBtn.addEventListener('click', function() {
         if (currentQuestion > 0) {
             // 回退上一题
-            var prevScores = QUESTIONS[currentQuestion - 1].options[answers[currentQuestion - 1]].scores;
+            var prevQ = activeQuestions[currentQuestion - 1];
+            var prevScores = prevQ.options[answers[currentQuestion - 1]].scores;
             Object.keys(prevScores).forEach(function(key) {
                 scores[key] -= prevScores[key];
             });
@@ -382,12 +555,19 @@ function calculateResult() {
         secondary: secondary,
         scores: Object.assign({}, scores),
         percentages: {},
-        timestamp: Date.now()
+        timestamp: Date.now(),
+        questionCount: activeQuestions.length,
+        useExtendedBank: useExtendedBank
     };
 
     Object.keys(scores).forEach(function(k) {
-        result.percentages[k] = Math.round((scores[k] / total) * 100);
+        result.percentages[k] = total > 0 ? Math.round((scores[k] / total) * 100) : 0;
     });
+
+    // 如果有职业映射数据，匹配推荐职业
+    if (jobRiasecMap) {
+        result.recommendedJobs = matchJobs(scores, jobRiasecMap).slice(0, 20);
+    }
 
     return result;
 }
@@ -479,32 +659,88 @@ function renderResultPage(container, result) {
     chart.appendChild(barChart);
     page.appendChild(chart);
 
-    // 推荐职业
-    var careersSection = createEl('div', 'assess-careers');
+    // 推荐职业（从职业数据库匹配）
+    if (result.recommendedJobs && result.recommendedJobs.length > 0) {
+        var careersSection = createEl('div', 'assess-careers');
 
-    var cTitle = createEl('h3', 'assess-chart-title');
-    cTitle.textContent = '';
-    cTitle.appendChild(icon('target', 18));
-    cTitle.appendChild(document.createTextNode(' 推荐职业方向'));
-    careersSection.appendChild(cTitle);
+        var cTitle = createEl('h3', 'assess-chart-title');
+        cTitle.textContent = '';
+        cTitle.appendChild(icon('target', 18));
+        cTitle.appendChild(document.createTextNode(' 智能匹配职业推荐'));
+        careersSection.appendChild(cTitle);
 
-    var allCareers = primary.careers.concat(secondary.careers);
-    // 去重
-    var uniqueCareers = [];
-    allCareers.forEach(function(c) {
-        if (uniqueCareers.indexOf(c) === -1) uniqueCareers.push(c);
-    });
+        var cSubtitle = createEl('p', '');
+        cSubtitle.style.cssText = 'font-size:13px;color:var(--text-secondary);margin:-8px 0 12px;';
+        cSubtitle.textContent = '基于你的测评结果，从 1600+ 职业数据库中智能匹配，点击可查看详情';
+        careersSection.appendChild(cSubtitle);
 
-    var careerGrid = createEl('div', 'assess-career-grid');
+        var careerGrid = createEl('div', 'assess-career-grid');
 
-    uniqueCareers.slice(0, 8).forEach(function(career) {
-        var tag = createEl('div', 'assess-career-tag');
-        tag.textContent = career;
-        careerGrid.appendChild(tag);
-    });
+        result.recommendedJobs.slice(0, 12).forEach(function(job) {
+            var tag = createEl('div', 'assess-career-tag assess-career-tag-clickable');
+            tag.style.cursor = 'pointer';
 
-    careersSection.appendChild(careerGrid);
-    page.appendChild(careersSection);
+            // 职业名称
+            var nameSpan = createEl('span', '');
+            nameSpan.textContent = job.name;
+            tag.appendChild(nameSpan);
+
+            // 匹配度
+            var matchSpan = createEl('span', 'assess-match-pct');
+            matchSpan.textContent = Math.round(job.matchScore * 100) + '%';
+            var matchColor = job.matchScore >= 0.3 ? '#10B981' : (job.matchScore >= 0.2 ? '#F59E0B' : '#64748B');
+            matchSpan.style.color = matchColor;
+            matchSpan.style.fontSize = '11px';
+            matchSpan.style.marginLeft = '6px';
+            tag.appendChild(matchSpan);
+
+            // RIASEC 类型标签
+            var typeTag = createEl('span', 'assess-riasec-mini-tag');
+            typeTag.textContent = job.primary + job.secondary;
+            typeTag.style.cssText = 'font-size:10px;background:' + RIASEC_TYPES[job.primary].color + '20;color:' + RIASEC_TYPES[job.primary].color + ';padding:1px 4px;border-radius:3px;margin-left:4px;';
+            tag.appendChild(typeTag);
+
+            // 点击跳转到职业详情
+            tag.addEventListener('click', function() {
+                if (window.openJobDetailModal) {
+                    window.openJobDetailModal(job.id);
+                } else {
+                    showToast('职业详情功能加载中...', 'info');
+                }
+            });
+
+            careerGrid.appendChild(tag);
+        });
+
+        careersSection.appendChild(careerGrid);
+        page.appendChild(careersSection);
+    } else {
+        // 回退到静态推荐
+        var careersSection = createEl('div', 'assess-careers');
+
+        var cTitle = createEl('h3', 'assess-chart-title');
+        cTitle.textContent = '';
+        cTitle.appendChild(icon('target', 18));
+        cTitle.appendChild(document.createTextNode(' 推荐职业方向'));
+        careersSection.appendChild(cTitle);
+
+        var allCareers = primary.careers.concat(secondary.careers);
+        var uniqueCareers = [];
+        allCareers.forEach(function(c) {
+            if (uniqueCareers.indexOf(c) === -1) uniqueCareers.push(c);
+        });
+
+        var careerGrid = createEl('div', 'assess-career-grid');
+
+        uniqueCareers.slice(0, 8).forEach(function(career) {
+            var tag = createEl('div', 'assess-career-tag');
+            tag.textContent = career;
+            careerGrid.appendChild(tag);
+        });
+
+        careersSection.appendChild(careerGrid);
+        page.appendChild(careersSection);
+    }
 
     // 操作按钮
     var actions = createEl('div', 'assess-actions');
@@ -516,11 +752,11 @@ function renderResultPage(container, result) {
     aiBtn.style.cssText = 'background:linear-gradient(135deg, #6366F1, #8B5CF6);color:#fff;border:none;';
     aiBtn.addEventListener('click', function() {
         // 构建测评结果摘要
-        var primary = RIASEC_TYPES[result.primary];
-        var secondary = RIASEC_TYPES[result.secondary];
+        var primaryType = RIASEC_TYPES[result.primary];
+        var secondaryType = RIASEC_TYPES[result.secondary];
         var summary = '这是我的霍兰德职业测评结果，请帮我分析：\n\n'
-            + '主要类型：' + primary.name + '（' + result.primary + '）- ' + Math.round(result.percentages[result.primary]) + '%\n'
-            + '次要类型：' + secondary.name + '（' + result.secondary + '）- ' + Math.round(result.percentages[result.secondary]) + '%\n\n'
+            + '主要类型：' + primaryType.name + '（' + result.primary + '）- ' + Math.round(result.percentages[result.primary]) + '%\n'
+            + '次要类型：' + secondaryType.name + '（' + result.secondary + '）- ' + Math.round(result.percentages[result.secondary]) + '%\n\n'
             + '各维度得分：\n';
         var sortedKeys = Object.keys(result.percentages).sort(function(a, b) {
             return result.percentages[b] - result.percentages[a];
@@ -529,6 +765,15 @@ function renderResultPage(container, result) {
             var type = RIASEC_TYPES[key];
             summary += '- ' + type.name + '（' + key + '）：' + Math.round(result.percentages[key]) + '%\n';
         });
+
+        // 如果有推荐职业，加入摘要
+        if (result.recommendedJobs && result.recommendedJobs.length > 0) {
+            summary += '\n系统推荐的前5个职业：\n';
+            result.recommendedJobs.slice(0, 5).forEach(function(job, i) {
+                summary += (i + 1) + '. ' + job.name + '（匹配度 ' + Math.round(job.matchScore * 100) + '%）\n';
+            });
+        }
+
         summary += '\n请根据以上结果，给我详细的职业分析和建议。';
 
         // 跳转到 AI 问答页

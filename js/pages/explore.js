@@ -15,7 +15,8 @@ const _exploreState = {
     selectedGroup: null,   // 当前选中的大类 ID
     selectedCats: [],      // 选中的中类 ID 列表（支持多选）
     allJobs: [],           // 当前筛选后的职业列表
-    filteredJobs: []       // 虚拟滚动：排序后的筛选结果
+    filteredJobs: [],      // 虚拟滚动：排序后的筛选结果
+    searchKeyword: ''      // 搜索关键词
 };
 
 /**
@@ -64,6 +65,9 @@ function getAllJobs() {
  * @param {HTMLElement} container
  */
 function renderExplore(container) {
+    // 0. 搜索栏
+    const searchSection = createSearchBar();
+
     // 1. 分类 Tab
     const tabsSection = createCategoryTabs();
 
@@ -73,9 +77,65 @@ function renderExplore(container) {
     // 3. 职业列表
     const listSection = createJobList();
 
+    container.appendChild(searchSection);
     container.appendChild(tabsSection);
     container.appendChild(chipsSection);
     container.appendChild(listSection);
+}
+
+// ==================== 搜索栏 ====================
+
+function createSearchBar() {
+    const wrap = createEl('div', 'mb-3');
+
+    const searchBox = createEl('div', 'search-box');
+    const searchIconEl = createEl('span', 'search-icon');
+    searchIconEl.appendChild(icon('search', 16));
+
+    const input = document.createElement('input');
+    input.className = 'input';
+    input.type = 'text';
+    input.placeholder = '搜索职业名称、描述...';
+    input.id = 'exploreSearchInput';
+    input.setAttribute('aria-label', '搜索职业');
+    if (_exploreState.searchKeyword) {
+        input.value = _exploreState.searchKeyword;
+    }
+
+    const clearBtn = createEl('span', 'search-clear', '×');
+    if (_exploreState.searchKeyword) {
+        clearBtn.classList.add('visible');
+    }
+
+    searchBox.appendChild(searchIconEl);
+    searchBox.appendChild(input);
+    searchBox.appendChild(clearBtn);
+    wrap.appendChild(searchBox);
+
+    // 搜索事件（防抖）
+    let timer = null;
+    input.addEventListener('input', function() {
+        clearTimeout(timer);
+        timer = setTimeout(function() {
+            _exploreState.searchKeyword = input.value.trim();
+            if (_exploreState.searchKeyword) {
+                clearBtn.classList.add('visible');
+            } else {
+                clearBtn.classList.remove('visible');
+            }
+            // 只刷新列表，不刷新整个页面
+            refreshJobList();
+        }, 200);
+    });
+
+    clearBtn.addEventListener('click', function() {
+        input.value = '';
+        _exploreState.searchKeyword = '';
+        clearBtn.classList.remove('visible');
+        refreshJobList();
+    });
+
+    return wrap;
 }
 
 // ==================== 分类 Tab ====================
@@ -222,22 +282,55 @@ function createJobList() {
 }
 
 /**
- * 根据当前筛选条件过滤职业
+ * 根据当前筛选条件和搜索关键词过滤职业
  * @returns {Array}
  */
 function filterExploreJobs() {
     const allJobs = _exploreState.allJobs;
-
-    if (!_exploreState.selectedGroup && _exploreState.selectedCats.length === 0) {
-        return allJobs;
-    }
-
-    const catMap = window.JOB_CATEGORY_MAP || {};
+    const kw = _exploreState.searchKeyword.toLowerCase();
 
     return allJobs.filter(function(job) {
+        // 搜索过滤
+        if (kw) {
+            const nameMatch = (job.name || '').toLowerCase().indexOf(kw) !== -1;
+            const descMatch = (job.desc || '').toLowerCase().indexOf(kw) !== -1;
+            if (!nameMatch && !descMatch) return false;
+        }
+
+        // 分类过滤
         if (_exploreState.selectedCats.length === 0) return true;
+        const catMap = window.JOB_CATEGORY_MAP || {};
         return _exploreState.selectedCats.indexOf(catMap[job.id]) !== -1;
     });
+}
+
+/**
+ * 只刷新职业列表（不刷新搜索栏和分类栏）
+ */
+function refreshJobList() {
+    const container = document.getElementById('page-explore');
+    if (!container) return;
+
+    // 移除旧的列表和中类chips
+    const oldList = container.querySelector('.job-list');
+    const oldEmpty = container.querySelector('.empty-state');
+    const oldParent = oldList ? oldList.parentElement : (oldEmpty ? oldEmpty.parentElement : null);
+    if (oldParent) {
+        container.removeChild(oldParent);
+    }
+
+    // 重新创建中类chips和列表
+    const chipsSection = createMidCategoryChips();
+    const listSection = createJobList();
+
+    // 插入到 tabs 之后
+    const tabs = container.querySelector('.category-tabs');
+    if (tabs && tabs.parentElement) {
+        tabs.parentElement.after(chipsSection);
+    } else {
+        container.appendChild(chipsSection);
+    }
+    container.appendChild(listSection);
 }
 
 /**
