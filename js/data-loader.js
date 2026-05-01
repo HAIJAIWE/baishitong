@@ -55,15 +55,19 @@ export async function loadData() {
 
     console.log('[数据] 索引加载完成: ' + _jobsData.totalJobs + '个职业（完整数据按需加载）');
 
-    // 后台预加载：不阻塞，静默加载所有分类数据
-    _preloadAllGroups();
+    // 延迟预加载：等用户浏览3秒后再开始预加载，避免影响首屏加载速度
+    setTimeout(function() {
+        _preloadVisibleGroups();
+    }, 3000);
 }
 
 /**
- * 后台预加载所有分类数据（不阻塞UI）
+ * 延迟预加载常用分类数据（只加载最常用的几个，避免一次性下载20MB）
  */
-function _preloadAllGroups() {
-    Object.keys(GROUP_FILES).forEach(function(group) {
+function _preloadVisibleGroups() {
+    // 只预加载最常用的3个分类（约8MB），其余按需加载
+    var priorityGroups = ['service', 'professional', 'manufacturing'];
+    priorityGroups.forEach(function(group) {
         _loadGroup(group);
     });
 }
