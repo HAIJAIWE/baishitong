@@ -263,10 +263,16 @@ function renderCommunity(container) {
     header.appendChild(title);
     container.appendChild(header);
 
-    // 本地模式提示
+    // 云端/本地模式提示
     const localTip = createEl('div', '');
-    localTip.style.cssText = 'display:flex;align-items:center;gap:var(--space-2);padding:var(--space-2) var(--space-3);margin:0 var(--space-md) var(--space-2);background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.12);border-radius:var(--radius-lg);font-size:var(--text-xs);color:var(--text-tertiary);';
-    localTip.innerHTML = '<span style="font-size:14px;">💡</span><span>社区当前为本地模式，数据仅保存在本机，暂未联网。后续将上线云端同步，敬请期待～</span>';
+    localTip.id = 'communityModeTip';
+    if (isLeanCloudConfigured()) {
+        localTip.style.cssText = 'display:flex;align-items:center;gap:var(--space-2);padding:var(--space-2) var(--space-3);margin:0 var(--space-md) mb(--space-2);background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.12);border-radius:var(--radius-lg);font-size:var(--text-xs);color:var(--text-tertiary);';
+        localTip.innerHTML = '<span style="font-size:14px;">☁️</span><span>已连接云端，数据同步中。所有用户可共享帖子和聊天内容。</span>';
+    } else {
+        localTip.style.cssText = 'display:flex;align-items:center;gap:var(--space-2);padding:var(--space-2) var(--space-3);margin:0 var(--space-md) var(--space-2);background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.12);border-radius:var(--radius-lg);font-size:var(--text-xs);color:var(--text-tertiary);';
+        localTip.innerHTML = '<span style="font-size:14px;">💡</span><span>社区当前为本地模式，数据仅保存在本机，暂未联网。前往 <b>个人中心 → LeanCloud配置</b> 开启云端同步。</span>';
+    }
     container.appendChild(localTip);
 
     // Tab 切换
