@@ -58,18 +58,33 @@ export function showOnboarding(onComplete) {
     const overlay = createEl('div', '');
     overlay.style.cssText = ''
         + 'position:fixed;top:0;left:0;right:0;bottom:0;'
-        + 'background:rgba(0,0,0,0.75);'
+        + 'background:rgba(0,0,0,0.6);'
         + 'z-index:var(--z-modal);'
         + 'display:flex;flex-direction:column;'
         + 'align-items:center;justify-content:center;'
         + 'opacity:0;transition:opacity var(--duration-normal) var(--ease-out);';
 
+    // ==================== 卡片容器 ====================
+
+    const card = createEl('div', '');
+    card.style.cssText = ''
+        + 'width:calc(100% - var(--space-8));'
+        + 'max-width:320px;'
+        + 'background:var(--bg-primary);'
+        + 'border:1px solid var(--border);'
+        + 'border-radius:var(--radius-xl);'
+        + 'box-shadow:var(--shadow-lg);'
+        + 'padding:var(--space-6) var(--space-5);'
+        + 'box-sizing:border-box;'
+        + 'text-align:center;'
+        + 'position:relative;'
+        + 'overflow:hidden;';
+
     // ==================== 步骤容器（滑动区域） ====================
 
     const slidesWrapper = createEl('div', '');
     slidesWrapper.style.cssText = ''
-        + 'width:100%;max-width:var(--app-max-width);'
-        + 'height:100%;display:flex;align-items:center;justify-content:center;'
+        + 'width:100%;height:220px;'
         + 'overflow:hidden;position:relative;';
 
     // 滑动轨道
@@ -87,36 +102,33 @@ export function showOnboarding(onComplete) {
             + 'width:25%;height:100%;'
             + 'display:flex;flex-direction:column;'
             + 'align-items:center;justify-content:center;'
-            + 'padding:var(--space-8) var(--space-6);'
+            + 'padding:var(--space-2);'
             + 'box-sizing:border-box;';
 
         // emoji 图标
         const iconEl = createEl('div', '');
         iconEl.textContent = step.icon;
         iconEl.style.cssText = ''
-            + 'font-size:64px;line-height:1;'
-            + 'margin-bottom:var(--space-8);'
-            + 'filter:drop-shadow(0 4px 12px rgba(0,0,0,0.3));';
+            + 'font-size:48px;line-height:1;'
+            + 'margin-bottom:var(--space-4);';
 
         // 标题
         const titleEl = createEl('h2', '');
         titleEl.textContent = step.title;
         titleEl.style.cssText = ''
-            + 'font-size:var(--text-2xl);'
+            + 'font-size:var(--text-lg);'
             + 'font-weight:var(--font-bold);'
             + 'color:var(--text-primary);'
-            + 'margin:0 0 var(--space-4) 0;'
-            + 'text-align:center;';
+            + 'margin:0 0 var(--space-2) 0;';
 
         // 描述
         const descEl = createEl('p', '');
         descEl.textContent = step.desc;
         descEl.style.cssText = ''
-            + 'font-size:var(--text-lg);'
+            + 'font-size:var(--text-sm);'
             + 'color:var(--text-secondary);'
-            + 'text-align:center;'
-            + 'line-height:var(--leading-relaxed);'
-            + 'margin:0;max-width:280px;';
+            + 'line-height:1.5;'
+            + 'margin:0;';
 
         slide.appendChild(iconEl);
         slide.appendChild(titleEl);
@@ -125,15 +137,15 @@ export function showOnboarding(onComplete) {
     });
 
     slidesWrapper.appendChild(track);
+    card.appendChild(slidesWrapper);
 
     // ==================== 指示器圆点 ====================
 
     const dotsContainer = createEl('div', '');
     dotsContainer.style.cssText = ''
         + 'display:flex;gap:var(--space-2);'
-        + 'margin-top:var(--space-10);'
-        + 'position:absolute;bottom:120px;'
-        + 'left:50%;transform:translateX(-50%);';
+        + 'justify-content:center;'
+        + 'margin-top:var(--space-4);';
 
     const dots = [];
     STEPS.forEach(function(_, index) {
@@ -147,37 +159,30 @@ export function showOnboarding(onComplete) {
         dotsContainer.appendChild(dot);
     });
 
+    card.appendChild(dotsContainer);
+
     // ==================== 操作按钮 ====================
 
-    const btnContainer = createEl('div', '');
-    btnContainer.style.cssText = ''
-        + 'position:absolute;bottom:48px;'
-        + 'left:50%;transform:translateX(-50%);'
-        + 'width:100%;max-width:280px;padding:0 var(--space-6);'
-        + 'box-sizing:border-box;';
-
-    const actionBtn = createEl('button', '');
+    const actionBtn = createEl('button', 'btn btn-primary');
     actionBtn.style.cssText = ''
-        + 'width:100%;padding:var(--space-4) var(--space-8);'
-        + 'border:none;border-radius:var(--radius-xl);'
-        + 'background:var(--gradient-accent);'
-        + 'color:#fff;font-size:var(--text-lg);'
-        + 'font-weight:var(--font-semibold);'
-        + 'cursor:pointer;'
-        + 'transition:transform var(--duration-fast) var(--ease-out),'
-        + 'box-shadow var(--duration-fast) var(--ease-out);'
-        + 'box-shadow:var(--shadow-md);';
+        + 'width:100%;margin-top:var(--space-4);'
+        + 'padding:var(--space-3) var(--space-6);';
+    actionBtn.textContent = '下一步';
+
+    card.appendChild(actionBtn);
 
     // 跳过按钮
     const skipBtn = createEl('button', '');
     skipBtn.style.cssText = ''
-        + 'position:absolute;top:var(--space-6);right:var(--space-6);'
+        + 'position:absolute;top:var(--space-3);right:var(--space-3);'
         + 'background:none;border:none;'
         + 'color:var(--text-tertiary);'
-        + 'font-size:var(--text-sm);'
-        + 'cursor:pointer;padding:var(--space-2) var(--space-3);'
+        + 'font-size:var(--text-xs);'
+        + 'cursor:pointer;padding:var(--space-1) var(--space-2);'
         + 'z-index:1;';
     skipBtn.textContent = '跳过';
+
+    card.appendChild(skipBtn);
 
     // ==================== 更新视图 ====================
 
@@ -190,7 +195,7 @@ export function showOnboarding(onComplete) {
             if (i === currentStep) {
                 dot.style.opacity = '1';
                 dot.style.background = 'var(--accent)';
-                dot.style.width = '24px';
+                dot.style.width = '20px';
             } else {
                 dot.style.opacity = '0.4';
                 dot.style.background = 'var(--text-tertiary)';
@@ -212,9 +217,7 @@ export function showOnboarding(onComplete) {
         // 标记已完成
         try {
             localStorage.setItem('byt_onboarding_done', 'true');
-        } catch (e) {
-            // localStorage 不可用时静默失败
-        }
+        } catch (e) {}
 
         // 淡出动画
         overlay.style.opacity = '0';
@@ -249,17 +252,6 @@ export function showOnboarding(onComplete) {
         finishOnboarding();
     });
 
-    // 按钮点击缩放反馈
-    actionBtn.addEventListener('mousedown', function() {
-        actionBtn.style.transform = 'scale(0.97)';
-    });
-    actionBtn.addEventListener('mouseup', function() {
-        actionBtn.style.transform = 'scale(1)';
-    });
-    actionBtn.addEventListener('mouseleave', function() {
-        actionBtn.style.transform = 'scale(1)';
-    });
-
     // ==================== 触摸滑动支持 ====================
 
     slidesWrapper.addEventListener('touchstart', function(e) {
@@ -272,16 +264,13 @@ export function showOnboarding(onComplete) {
         const dx = e.touches[0].clientX - touchStartX;
         const dy = e.touches[0].clientY - touchStartY;
 
-        // 判断是否为水平滑动（水平位移大于垂直位移）
         if (!isSwiping && Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 10) {
             isSwiping = true;
         }
 
-        // 水平滑动时跟随手指移动（带阻尼）
         if (isSwiping) {
             const baseOffset = -(currentStep * 25);
             const slidePercent = (dx / slidesWrapper.offsetWidth) * 25;
-            // 边界阻尼：在首尾步骤时减少滑动距离
             let dampedSlide = slidePercent;
             if ((currentStep === 0 && slidePercent > 0) ||
                 (currentStep === STEPS.length - 1 && slidePercent < 0)) {
@@ -298,14 +287,11 @@ export function showOnboarding(onComplete) {
         const dx = e.changedTouches[0].clientX - touchStartX;
         const threshold = slidesWrapper.offsetWidth * 0.2;
 
-        // 恢复过渡动画
         track.style.transition = 'transform var(--duration-slow) var(--ease-out)';
 
         if (dx < -threshold && currentStep < STEPS.length - 1) {
-            // 向左滑 → 下一步
             currentStep++;
         } else if (dx > threshold && currentStep > 0) {
-            // 向右滑 → 上一步
             currentStep--;
         }
 
@@ -315,10 +301,7 @@ export function showOnboarding(onComplete) {
 
     // ==================== 组装并显示 ====================
 
-    overlay.appendChild(skipBtn);
-    overlay.appendChild(slidesWrapper);
-    overlay.appendChild(dotsContainer);
-    overlay.appendChild(btnContainer);
+    overlay.appendChild(card);
 
     // 阻止背景滚动
     document.body.style.overflow = 'hidden';
