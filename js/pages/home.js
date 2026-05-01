@@ -6,7 +6,7 @@ import { clearContainer, createEl, debounce } from '../utils/ui.js';
 import { icon, categoryIconEl } from '../utils/icons.js';
 import { searchJobs, highlightKeyword, getSmartRecommendations, getRandomJobs } from '../utils/search.js';
 import { navigateTo, resetPageInit } from '../router.js';
-import { getRecentViewed, appState } from '../state.js';
+import { getRecentViewed, appState, hasCheckedInToday, getCheckinInfo } from '../state.js';
 import { getJob } from '../data-loader.js';
 
 /**
@@ -44,6 +44,7 @@ function renderHome(container) {
 
     container.appendChild(heroSection);
     container.appendChild(createAnnouncement());
+    container.appendChild(createCheckinReminder());
     container.appendChild(quickSection);
     container.appendChild(recommendSection);
     container.appendChild(categorySection);
@@ -505,6 +506,53 @@ function createAnnouncement() {
             section.style.display = 'none';
         }
     } catch(e) {}
+
+    return section;
+}
+
+// ==================== 签到提醒卡片 ====================
+
+function createCheckinReminder() {
+    var section = createEl('div', 'checkin-reminder-card');
+
+    // 如果当天已签到，不显示
+    if (hasCheckedInToday()) {
+        section.style.display = 'none';
+        return section;
+    }
+
+    var info = getCheckinInfo();
+    var streak = info.streak || 0;
+
+    // 图标
+    var iconWrap = createEl('span', 'checkin-reminder-icon');
+    iconWrap.appendChild(icon('target', 20, '#EF4444'));
+    section.appendChild(iconWrap);
+
+    // 文字
+    var textWrap = createEl('div', 'checkin-reminder-text');
+    var mainText = createEl('div', 'checkin-reminder-main');
+    mainText.textContent = '别忘了今日签到！';
+    textWrap.appendChild(mainText);
+
+    var subText = createEl('div', 'checkin-reminder-sub');
+    if (streak > 0) {
+        subText.textContent = '已连续签到 ' + streak + ' 天，继续保持';
+    } else {
+        subText.textContent = '签到赢积分，连续签到有额外奖励';
+    }
+    textWrap.appendChild(subText);
+    section.appendChild(textWrap);
+
+    // 箭头
+    var arrow = createEl('span', 'checkin-reminder-arrow');
+    arrow.appendChild(icon('chevronRight', 18, 'var(--text-tertiary)'));
+    section.appendChild(arrow);
+
+    // 点击跳转到签到页面
+    section.addEventListener('click', function() {
+        navigateTo('page-checkin');
+    });
 
     return section;
 }

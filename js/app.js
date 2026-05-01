@@ -331,9 +331,94 @@ function registerServiceWorker() {
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('/sw.js').then(function(registration) {
             console.log('Service Worker 注册成功:', registration.scope);
+
+            // 监听 Service Worker 更新
+            registration.addEventListener('updatefound', function() {
+                var newWorker = registration.installing;
+                newWorker.addEventListener('statechange', function() {
+                    if (newWorker.state === 'activated') {
+                        console.log('[SW] 新版本已激活');
+                    }
+                });
+            });
         }).catch(function(err) {
             console.warn('Service Worker 注册失败:', err);
         });
+    }
+}
+
+/**
+ * 网络状态监控
+ * 离线时在页面顶部显示提示条，恢复网络时自动隐藏
+ */
+function setupNetworkStatus() {
+    var banner = null;
+
+    function showOfflineBanner() {
+        if (banner) return; // 已显示则不重复创建
+
+        banner = document.createElement('div');
+        banner.id = 'offlineBanner';
+        banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9999;'
+            + 'background:linear-gradient(135deg, #f59e0b, #d97706);'
+            + 'color:#1a1a2e;text-align:center;'
+            + 'padding:8px 16px;font-size:14px;font-weight:600;'
+            + 'display:flex;align-items:center;justify-content:center;gap:8px;'
+            + 'box-shadow:0 2px 12px rgba(0,0,0,0.2);'
+            + 'animation:slideDown 0.3s ease;'
+            + 'transform:translateY(0);';
+
+        // WiFi 断开图标
+        var svgIcon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        svgIcon.setAttribute('width', '16');
+        svgIcon.setAttribute('height', '16');
+        svgIcon.setAttribute('viewBox', '0 0 24 24');
+        svgIcon.setAttribute('fill', 'none');
+        svgIcon.setAttribute('stroke', 'currentColor');
+        svgIcon.setAttribute('stroke-width', '2');
+        svgIcon.setAttribute('stroke-linecap', 'round');
+        svgIcon.setAttribute('stroke-linejoin', 'round');
+        svgIcon.innerHTML = '<line x1="1" y1="1" x2="23" y2="23"/>'
+            + '<path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"/>'
+            + '<path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"/>'
+            + '<path d="M10.71 5.05A16 16 0 0 1 22.56 9"/>'
+            + '<path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"/>'
+            + '<path d="M8.53 16.11a6 6 0 0 1 6.95 0"/>'
+            + '<line x1="12" y1="20" x2="12.01" y2="20"/>';
+
+        var textSpan = document.createElement('span');
+        textSpan.textContent = '当前处于离线模式，已缓存的内容仍可访问';
+
+        banner.appendChild(svgIcon);
+        banner.appendChild(textSpan);
+        document.body.appendChild(banner);
+    }
+
+    function hideOfflineBanner() {
+        if (!banner) return;
+        banner.style.opacity = '0';
+        banner.style.transition = 'opacity 0.3s ease';
+        setTimeout(function() {
+            if (banner && banner.parentNode) {
+                banner.parentNode.removeChild(banner);
+            }
+            banner = null;
+        }, 300);
+    }
+
+    window.addEventListener('offline', function() {
+        console.log('[网络] 已断开连接');
+        showOfflineBanner();
+    });
+
+    window.addEventListener('online', function() {
+        console.log('[网络] 已恢复连接');
+        hideOfflineBanner();
+    });
+
+    // 页面加载时检查初始网络状态
+    if (!navigator.onLine) {
+        showOfflineBanner();
     }
 }
 
@@ -428,12 +513,14 @@ if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', function() {
         initApp();
         registerServiceWorker();
+        setupNetworkStatus();
         setupPWAInstall();
     });
 } else {
     // DOMContentLoaded 已触发（常见于 Vite 开发模式的模块异步加载场景）
     initApp();
     registerServiceWorker();
+    setupNetworkStatus();
     setupPWAInstall();
 }
 

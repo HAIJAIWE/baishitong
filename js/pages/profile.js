@@ -12,6 +12,7 @@ import { getAIModels } from '../ai-engine.js';
 import { removeStoredApiKey, logout, changePassword } from '../auth.js';
 import { isLeanCloudConfigured, saveLeanCloudConfig, getLeanCloudConfig } from '../leancloud-service.js';
 import { icon } from '../utils/icons.js';
+import { getJobFull } from '../data-loader.js';
 
 /**
  * 初始化个人中心
@@ -206,6 +207,20 @@ function createSettingsList() {
             action: 'achievements'
         },
         {
+            icon: 'barChart3',
+            name: '学习进度',
+            desc: '查看各职业学习情况',
+            action: 'learning-dashboard'
+        },
+        {
+            icon: 'bell',
+            name: '消息通知',
+            desc: getUnreadNotificationCount() > 0
+                ? getUnreadNotificationCount() + ' 条未读通知'
+                : '查看系统通知和更新日志',
+            action: 'notifications'
+        },
+        {
             icon: 'heart',
             name: '赞助支持',
             desc: '帮助百事通持续运营 ❤️',
@@ -378,6 +393,14 @@ function handleSettingAction(action) {
             navigateTo('page-achievements');
             break;
 
+        case 'learning-dashboard':
+            showLearningDashboard();
+            break;
+
+        case 'notifications':
+            showNotifications();
+            break;
+
         case 'support':
             showSupportModal();
             break;
@@ -531,6 +554,606 @@ function showChangePasswordModal() {
 
     cancelBtn.addEventListener('click', function() {
         hideModal();
+    });
+}
+
+// ==================== 学习进度仪表盘 ====================
+
+/**
+ * 从 localStorage 扫描所有学习进度数据
+ * 支持两种 key 格式：
+ *   - bst_learned_{jobId}_{levelIndex}_{stepIndex} (值为 "1")
+ *   - byt_path_progress_{jobId} (值为 JSON {levelIndex_stepIndex: true})
+ * @returns {Object} { jobId: { completedSteps: [{level, step}], totalCompleted: number } }
+ */
+function scanLearningData() {
+    const result = {};
+    try {
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (!key) continue;
+
+            // 格式1: bst_learned_{jobId}_{levelIndex}_{stepIndex}
+            if (key.indexOf('bst_learned_') === 0) {
+                const val = localStorage.getItem(key);
+                if (val !== '1') continue;
+                const parts = key.replace('bst_learned_', '').split('_');
+                const jobId = parts[0];
+                const levelIndex = parseInt(parts[1], 10);
+                const stepIndex = parseInt(parts[2], 10);
+                if (isNaN(levelIndex) || isNaN(stepIndex)) continue;
+
+                if (!result[jobId]) {
+                    result[jobId] = { completedSteps: [], totalCompleted: 0 };
+                }
+                result[jobId].completedSteps.push({ level: levelIndex, step: stepIndex });
+                result[jobId].totalCompleted++;
+            }
+
+            // 格式2: byt_path_progress_{jobId}
+            if (key.indexOf('byt_path_progress_') === 0) {
+                const jobId = key.replace('byt_path_progress_', '');
+                const raw = localStorage.getItem(key);
+                if (!raw) continue;
+                let progressData;
+                try { progressData = JSON.parse(raw); } catch (e) { continue; }
+
+                if (!result[jobId]) {
+                    result[jobId] = { completedSteps: [], totalCompleted: 0 };
+                }
+
+                Object.keys(progressData).forEach(function(stepKey) {
+                    if (!progressData[stepKey]) return;
+                    // stepKey 格式: "levelIndex_stepIndex"
+                    const parts = stepKey.split('_');
+                    const levelIndex = parseInt(parts[0], 10);
+                    const stepIndex = parseInt(parts[1], 10);
+                    if (isNaN(levelIndex) || isNaN(stepIndex)) return;
+
+                    // 避免与格式1重复计数
+                    const exists = result[jobId].completedSteps.some(function(s) {
+                        return s.level === levelIndex && s.step === stepIndex;
+                    });
+                    if (!exists) {
+                        result[jobId].completedSteps.push({ level: levelIndex, step: stepIndex });
+                        result[jobId].totalCompleted++;
+                    }
+                });
+            }
+        }
+    } catch (e) {
+        console.warn('[学习进度] 扫描 localStorage 失败:', e);
+    }
+    return result;
+}
+
+/**
+ * 显示学习进度仪表盘弹窗
+ */
+async function showLearningDashboard() {
+    // 先显示加载状态
+    const loadingWrap = document.createElement('div');
+    loadingWrap.className = 'learning-dashboard';
+    loadingWrap.style.cssText = 'text-align:center;padding:60px 20px;';
+    const timerIcon = icon('barChart3', 32);
+    timerIcon.style.marginBottom = '12px';
+    loadingWrap.appendChild(timerIcon);
+    const loadingText = document.createElement('div');
+    loadingText.style.color = 'var(--text-secondary)';
+    loadingText.textContent = '正在加载学习数据...';
+    loadingWrap.appendChild(loadingText);
+    showModal(loadingWrap);
+
+    // 扫描学习数据
+    const learningData = scanLearningData();
+    const jobIds = Object.keys(learningData);
+
+    // 异步加载所有职业的完整数据
+    const jobDataMap = {};
+    const loadPromises = jobIds.map(function(jobId) {
+        return getJobFull(jobId).then(function(job) {
+            if (job) jobDataMap[jobId] = job;
+        });
+    });
+    await Promise.all(loadPromises);
+
+    // 构建仪表盘内容
+    const wrap = document.createElement('div');
+    wrap.className = 'learning-dashboard';
+
+    // 标题
+    const title = createEl('div', 'modal-section-title center');
+    title.textContent = '';
+    title.appendChild(icon('barChart3', 18));
+    title.appendChild(document.createTextNode(' 学习进度'));
+    wrap.appendChild(title);
+
+    if (jobIds.length === 0) {
+        // 没有学习记录
+        const emptyState = createEl('div', '');
+        emptyState.style.cssText = 'text-align:center;padding:40px 20px;color:var(--text-secondary);';
+        const emptyIcon = createEl('div', '');
+        emptyIcon.style.cssText = 'font-size:48px;margin-bottom:12px;';
+        emptyIcon.appendChild(icon('bookOpen', 48, 'var(--text-tertiary)'));
+        emptyState.appendChild(emptyIcon);
+        const emptyText = createEl('div', '');
+        emptyText.style.cssText = 'font-size:var(--text-base);margin-bottom:8px;';
+        emptyText.textContent = '还没有学习记录';
+        emptyState.appendChild(emptyText);
+        const emptyHint = createEl('div', '');
+        emptyHint.style.cssText = 'font-size:var(--text-sm);color:var(--text-tertiary);';
+        emptyHint.textContent = '去职业详情页标记学习步骤吧';
+        emptyState.appendChild(emptyHint);
+        wrap.appendChild(emptyState);
+        showModal(wrap);
+        return;
+    }
+
+    // === 1. 总览数据（3个数字卡片） ===
+    let totalCompletedSteps = 0;
+    let totalEstimatedTime = 0; // 分钟
+    let totalSteps = 0;
+
+    jobIds.forEach(function(jobId) {
+        const data = learningData[jobId];
+        totalCompletedSteps += data.totalCompleted;
+
+        const job = jobDataMap[jobId];
+        if (job && job.levels) {
+            job.levels.forEach(function(level, lvIdx) {
+                if (level.steps) {
+                    totalSteps += level.steps.length;
+                    level.steps.forEach(function(step, stepIdx) {
+                        // 检查是否已完成
+                        const isCompleted = data.completedSteps.some(function(s) {
+                            return s.level === lvIdx && s.step === stepIdx;
+                        });
+                        if (isCompleted && step.estimatedTime) {
+                            totalEstimatedTime += step.estimatedTime;
+                        }
+                    });
+                }
+            });
+        }
+    });
+
+    const activeJobCount = jobIds.length;
+
+    // 格式化时长
+    function formatTime(minutes) {
+        if (minutes < 60) return minutes + '分钟';
+        const hours = Math.floor(minutes / 60);
+        const mins = minutes % 60;
+        return mins > 0 ? hours + '小时' + mins + '分钟' : hours + '小时';
+    }
+
+    const statsGrid = createEl('div', '');
+    statsGrid.style.cssText = 'display:grid;grid-template-columns:repeat(3,1fr);gap:var(--space-2);margin-bottom:var(--space-4);';
+
+    const statItems = [
+        { value: activeJobCount, label: '学习中的职业', icon: 'briefcase', color: '#2563EB' },
+        { value: totalCompletedSteps, label: '已完成步骤', icon: 'checkCircle', color: '#059669' },
+        { value: formatTime(totalEstimatedTime), label: '累计学习时长', icon: 'timer', color: '#D97706' }
+    ];
+
+    statItems.forEach(function(item) {
+        const card = createEl('div', '');
+        card.style.cssText = 'background:var(--bg-primary);border-radius:var(--radius-lg);padding:var(--space-3);text-align:center;';
+
+        const iconWrap = createEl('div', '');
+        iconWrap.style.cssText = 'margin-bottom:6px;';
+        iconWrap.appendChild(icon(item.icon, 20, item.color));
+        card.appendChild(iconWrap);
+
+        const value = createEl('div', '');
+        value.style.cssText = 'font-size:var(--text-xl);font-weight:var(--font-bold);color:var(--text-primary);';
+        value.textContent = item.value;
+        card.appendChild(value);
+
+        const label = createEl('div', '');
+        label.style.cssText = 'font-size:var(--text-xs);color:var(--text-tertiary);margin-top:2px;';
+        label.textContent = item.label;
+        card.appendChild(label);
+
+        statsGrid.appendChild(card);
+    });
+
+    wrap.appendChild(statsGrid);
+
+    // === 2. 学习中的职业列表 ===
+    const sectionTitle = createEl('div', '');
+    sectionTitle.style.cssText = 'font-size:var(--text-base);font-weight:var(--font-semibold);margin-bottom:var(--space-3);display:flex;align-items:center;gap:6px;';
+    sectionTitle.appendChild(icon('bookOpen', 16, 'var(--accent)'));
+    sectionTitle.appendChild(document.createTextNode(' 学习中的职业'));
+    wrap.appendChild(sectionTitle);
+
+    // 构建职业进度数据并排序
+    const jobProgressList = jobIds.map(function(jobId) {
+        const data = learningData[jobId];
+        const job = jobDataMap[jobId];
+        let jobTotalSteps = 0;
+        let jobCompletedSteps = data.totalCompleted;
+
+        if (job && job.levels) {
+            job.levels.forEach(function(level) {
+                if (level.steps) jobTotalSteps += level.steps.length;
+            });
+        }
+
+        const percent = jobTotalSteps > 0 ? Math.round((jobCompletedSteps / jobTotalSteps) * 100) : 0;
+
+        return {
+            jobId: jobId,
+            jobName: job ? job.name : jobId,
+            completedSteps: jobCompletedSteps,
+            totalSteps: jobTotalSteps,
+            percent: percent
+        };
+    });
+
+    // 按完成度降序排序
+    jobProgressList.sort(function(a, b) { return b.percent - a.percent; });
+
+    const jobList = createEl('div', '');
+    jobList.style.cssText = 'display:flex;flex-direction:column;gap:var(--space-2);margin-bottom:var(--space-4);';
+
+    jobProgressList.forEach(function(item) {
+        const row = createEl('div', '');
+        row.style.cssText = 'background:var(--bg-primary);border-radius:var(--radius-md);padding:var(--space-3);';
+
+        // 上方：职业名 + 进度数字
+        const topRow = createEl('div', '');
+        topRow.style.cssText = 'display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;';
+
+        const nameEl = createEl('div', '');
+        nameEl.style.cssText = 'font-size:var(--text-sm);font-weight:var(--font-semibold);color:var(--text-primary);max-width:70%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
+        nameEl.textContent = item.jobName;
+        topRow.appendChild(nameEl);
+
+        const percentEl = createEl('div', '');
+        percentEl.style.cssText = 'font-size:var(--text-sm);font-weight:var(--font-bold);color:var(--accent);';
+        percentEl.textContent = item.completedSteps + '/' + item.totalSteps;
+        topRow.appendChild(percentEl);
+
+        row.appendChild(topRow);
+
+        // 进度条
+        const barBg = createEl('div', '');
+        barBg.style.cssText = 'width:100%;height:8px;background:var(--bg-tertiary);border-radius:4px;overflow:hidden;';
+
+        const barFill = createEl('div', '');
+        barFill.style.cssText = 'height:100%;border-radius:4px;background:linear-gradient(90deg, var(--accent), #059669);transition:width 0.8s ease;width:0;';
+
+        barBg.appendChild(barFill);
+        row.appendChild(barBg);
+
+        jobList.appendChild(row);
+
+        // 动画：延迟设置宽度以触发过渡效果
+        requestAnimationFrame(function() {
+            setTimeout(function() {
+                barFill.style.width = item.percent + '%';
+            }, 50);
+        });
+    });
+
+    wrap.appendChild(jobList);
+
+    // === 3. 最近学习（最近完成的5个步骤） ===
+    // 收集所有已完成步骤的信息
+    const recentSteps = [];
+    jobIds.forEach(function(jobId) {
+        const data = learningData[jobId];
+        const job = jobDataMap[jobId];
+
+        data.completedSteps.forEach(function(stepInfo) {
+            let stepTitle = '';
+            let estimatedTime = 0;
+
+            if (job && job.levels && job.levels[stepInfo.level] && job.levels[stepInfo.level].steps) {
+                const step = job.levels[stepInfo.level].steps[stepInfo.step];
+                if (step) {
+                    stepTitle = step.title || '';
+                    estimatedTime = step.estimatedTime || 0;
+                }
+            }
+
+            // 用 localStorage key 的存在时间作为排序依据（无法精确获取时间，用 key 顺序近似）
+            recentSteps.push({
+                jobId: jobId,
+                jobName: job ? job.name : jobId,
+                levelIndex: stepInfo.level,
+                stepIndex: stepInfo.step,
+                stepTitle: stepTitle,
+                estimatedTime: estimatedTime
+            });
+        });
+    });
+
+    // 取最近5个（倒序，即最后添加的在前面）
+    const recentList = recentSteps.slice(-5).reverse();
+
+    if (recentList.length > 0) {
+        const recentTitle = createEl('div', '');
+        recentTitle.style.cssText = 'font-size:var(--text-base);font-weight:var(--font-semibold);margin-bottom:var(--space-3);display:flex;align-items:center;gap:6px;';
+        recentTitle.appendChild(icon('clock', 16, 'var(--accent)'));
+        recentTitle.appendChild(document.createTextNode(' 最近学习'));
+        wrap.appendChild(recentTitle);
+
+        const recentContainer = createEl('div', '');
+        recentContainer.style.cssText = 'display:flex;flex-direction:column;gap:var(--space-2);margin-bottom:var(--space-4);';
+
+        recentList.forEach(function(item) {
+            const row = createEl('div', '');
+            row.style.cssText = 'background:var(--bg-primary);border-radius:var(--radius-md);padding:var(--space-3);display:flex;align-items:center;gap:var(--space-2);';
+
+            const checkIcon = createEl('span', '');
+            checkIcon.appendChild(icon('checkCircle', 16, '#059669'));
+            row.appendChild(checkIcon);
+
+            const info = createEl('div', '');
+            info.style.cssText = 'flex:1;min-width:0;';
+
+            const stepTitleEl = createEl('div', '');
+            stepTitleEl.style.cssText = 'font-size:var(--text-sm);color:var(--text-primary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
+            stepTitleEl.textContent = item.stepTitle || ('步骤 ' + (item.stepIndex + 1));
+            info.appendChild(stepTitleEl);
+
+            const jobNameEl = createEl('div', '');
+            jobNameEl.style.cssText = 'font-size:var(--text-xs);color:var(--text-tertiary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
+            jobNameEl.textContent = item.jobName;
+            info.appendChild(jobNameEl);
+
+            row.appendChild(info);
+
+            if (item.estimatedTime) {
+                const timeEl = createEl('span', '');
+                timeEl.style.cssText = 'font-size:var(--text-xs);color:var(--text-tertiary);white-space:nowrap;';
+                timeEl.appendChild(icon('timer', 12));
+                timeEl.appendChild(document.createTextNode(' ' + formatTime(item.estimatedTime)));
+                row.appendChild(timeEl);
+            }
+
+            recentContainer.appendChild(row);
+        });
+
+        wrap.appendChild(recentContainer);
+    }
+
+    // 关闭按钮
+    const closeBtn = createEl('button', 'btn btn-outline');
+    closeBtn.style.cssText = 'width:100%;';
+    closeBtn.textContent = '关闭';
+    closeBtn.addEventListener('click', function() { hideModal(); });
+    wrap.appendChild(closeBtn);
+
+    showModal(wrap);
+}
+
+// ==================== 消息通知 ====================
+
+/**
+ * 获取已读通知ID列表
+ * @returns {Array<string>}
+ */
+function getReadNotificationIds() {
+    try {
+        return JSON.parse(localStorage.getItem('bst_read_notifications') || '[]');
+    } catch (e) {
+        return [];
+    }
+}
+
+/**
+ * 获取未读通知数量
+ * @returns {number}
+ */
+function getUnreadNotificationCount() {
+    const readIds = getReadNotificationIds();
+    // 从 notifications.json 获取通知总数（同步方式：使用缓存或默认值）
+    // 这里用已知的总通知数 5 作为基准，实际加载时会更准确
+    const totalIds = ['n001', 'n002', 'n003', 'n004', 'n005'];
+    return totalIds.filter(function(id) { return readIds.indexOf(id) === -1; }).length;
+}
+
+/**
+ * 显示消息通知弹窗
+ */
+async function showNotifications() {
+    // 显示加载状态
+    const loadingWrap = document.createElement('div');
+    loadingWrap.className = 'notifications-panel';
+    loadingWrap.style.cssText = 'text-align:center;padding:60px 20px;';
+    const bellIcon = icon('bell', 32);
+    bellIcon.style.marginBottom = '12px';
+    loadingWrap.appendChild(bellIcon);
+    const loadingText = document.createElement('div');
+    loadingText.style.color = 'var(--text-secondary)';
+    loadingText.textContent = '正在加载通知...';
+    loadingWrap.appendChild(loadingText);
+    showModal(loadingWrap);
+
+    // 加载通知数据
+    let notifications = [];
+    try {
+        const res = await fetch('js/data/notifications.json');
+        const data = await res.json();
+        notifications = data.notifications || [];
+    } catch (e) {
+        console.warn('[通知] 加载失败:', e);
+    }
+
+    // 获取已读列表
+    const readIds = getReadNotificationIds();
+
+    // 按日期降序排列
+    notifications.sort(function(a, b) {
+        return b.date.localeCompare(a.date);
+    });
+
+    // 构建弹窗内容
+    const wrap = document.createElement('div');
+    wrap.className = 'notifications-panel';
+
+    // 标题
+    const title = createEl('div', 'modal-section-title center');
+    title.textContent = '';
+    title.appendChild(icon('bell', 18));
+    title.appendChild(document.createTextNode(' 消息通知'));
+    wrap.appendChild(title);
+
+    if (notifications.length === 0) {
+        const emptyState = createEl('div', '');
+        emptyState.style.cssText = 'text-align:center;padding:40px 20px;color:var(--text-secondary);';
+        const emptyIcon = createEl('div', '');
+        emptyIcon.style.cssText = 'font-size:48px;margin-bottom:12px;';
+        emptyIcon.appendChild(icon('bell', 48, 'var(--text-tertiary)'));
+        emptyState.appendChild(emptyIcon);
+        const emptyText = createEl('div', '');
+        emptyText.style.cssText = 'font-size:var(--text-base);margin-bottom:8px;';
+        emptyText.textContent = '暂无通知';
+        emptyState.appendChild(emptyText);
+        wrap.appendChild(emptyState);
+        showModal(wrap);
+        return;
+    }
+
+    // 类型 → 颜色/标签映射
+    const typeConfig = {
+        update:   { label: '更新', color: '#2563EB', bg: '#2563EB15' },
+        feature:  { label: '新功能', color: '#059669', bg: '#05966915' },
+        reminder: { label: '提醒', color: '#D97706', bg: '#D9770615' }
+    };
+
+    // 通知列表
+    const list = createEl('div', '');
+    list.style.cssText = 'display:flex;flex-direction:column;gap:var(--space-2);margin-bottom:var(--space-4);';
+
+    notifications.forEach(function(notif) {
+        const isRead = readIds.indexOf(notif.id) !== -1;
+        const config = typeConfig[notif.type] || typeConfig.update;
+
+        const row = createEl('div', '');
+        row.style.cssText = 'background:var(--bg-primary);border-radius:var(--radius-md);padding:var(--space-3);display:flex;gap:var(--space-3);align-items:flex-start;cursor:pointer;opacity:' + (isRead ? '0.6' : '1') + ';transition:opacity 0.2s;';
+
+        // 图标
+        const iconWrap = createEl('div', '');
+        iconWrap.style.cssText = 'width:40px;height:40px;border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;background:' + config.bg + ';flex-shrink:0;';
+        iconWrap.appendChild(icon(notif.icon || 'bell', 20, config.color));
+        row.appendChild(iconWrap);
+
+        // 内容区
+        const info = createEl('div', '');
+        info.style.cssText = 'flex:1;min-width:0;';
+
+        // 标题行（标题 + 类型标签 + 日期）
+        const titleRow = createEl('div', '');
+        titleRow.style.cssText = 'display:flex;align-items:center;gap:6px;margin-bottom:4px;flex-wrap:wrap;';
+
+        const notifTitle = createEl('div', '');
+        notifTitle.style.cssText = 'font-size:var(--text-sm);font-weight:var(--font-semibold);color:var(--text-primary);';
+        notifTitle.textContent = notif.title;
+        titleRow.appendChild(notifTitle);
+
+        // 类型标签
+        const tag = createEl('span', '');
+        tag.style.cssText = 'font-size:10px;padding:1px 6px;border-radius:4px;color:' + config.color + ';background:' + config.bg + ';font-weight:500;white-space:nowrap;';
+        tag.textContent = config.label;
+        titleRow.appendChild(tag);
+
+        // 未读圆点
+        if (!isRead) {
+            const dot = createEl('span', '');
+            dot.style.cssText = 'width:6px;height:6px;border-radius:50%;background:#EF4444;flex-shrink:0;';
+            titleRow.appendChild(dot);
+        }
+
+        info.appendChild(titleRow);
+
+        // 内容
+        const content = createEl('div', '');
+        content.style.cssText = 'font-size:var(--text-xs);color:var(--text-secondary);line-height:1.5;margin-bottom:4px;';
+        content.textContent = notif.content;
+        info.appendChild(content);
+
+        // 日期
+        const date = createEl('div', '');
+        date.style.cssText = 'font-size:var(--text-xs);color:var(--text-tertiary);';
+        date.textContent = notif.date;
+        info.appendChild(date);
+
+        row.appendChild(info);
+
+        // 点击标记为已读
+        row.addEventListener('click', function() {
+            if (!isRead) {
+                const updatedReadIds = getReadNotificationIds();
+                if (updatedReadIds.indexOf(notif.id) === -1) {
+                    updatedReadIds.push(notif.id);
+                    try { localStorage.setItem('bst_read_notifications', JSON.stringify(updatedReadIds)); } catch (e) {}
+                }
+                row.style.opacity = '0.6';
+                // 移除未读圆点
+                const dotEl = titleRow.querySelector('span[style*="border-radius:50%"]');
+                if (dotEl) dotEl.remove();
+                // 更新菜单项描述
+                updateNotificationDesc();
+            }
+        });
+
+        list.appendChild(row);
+    });
+
+    wrap.appendChild(list);
+
+    // 全部标记已读按钮
+    const unreadCount = notifications.filter(function(n) { return readIds.indexOf(n.id) === -1; }).length;
+    if (unreadCount > 0) {
+        const markAllBtn = createEl('button', 'btn btn-outline');
+        markAllBtn.style.cssText = 'width:100%;margin-bottom:var(--space-2);';
+        markAllBtn.textContent = '全部标记为已读';
+        markAllBtn.addEventListener('click', function() {
+            const allIds = notifications.map(function(n) { return n.id; });
+            try { localStorage.setItem('bst_read_notifications', JSON.stringify(allIds)); } catch (e) {}
+            // 更新所有行的样式
+            list.querySelectorAll('div[style*="opacity"]').forEach(function(row) {
+                row.style.opacity = '0.6';
+            });
+            list.querySelectorAll('span[style*="border-radius:50%"]').forEach(function(dot) {
+                dot.remove();
+            });
+            updateNotificationDesc();
+            showToast('已全部标记为已读', 'success');
+        });
+        wrap.appendChild(markAllBtn);
+    }
+
+    // 关闭按钮
+    const closeBtn = createEl('button', 'btn btn-outline');
+    closeBtn.style.cssText = 'width:100%;';
+    closeBtn.textContent = '关闭';
+    closeBtn.addEventListener('click', function() { hideModal(); });
+    wrap.appendChild(closeBtn);
+
+    showModal(wrap);
+}
+
+/**
+ * 更新通知菜单项的描述文字（显示未读数量）
+ */
+function updateNotificationDesc() {
+    const unreadCount = getUnreadNotificationCount();
+    const settingsItems = document.querySelectorAll('.settings-item');
+    settingsItems.forEach(function(item) {
+        const nameEl = item.querySelector('.setting-name');
+        if (nameEl && nameEl.textContent === '消息通知') {
+            const descEl = item.querySelector('.setting-desc');
+            if (descEl) {
+                descEl.textContent = unreadCount > 0
+                    ? unreadCount + ' 条未读通知'
+                    : '查看系统通知和更新日志';
+            }
+        }
     });
 }
 

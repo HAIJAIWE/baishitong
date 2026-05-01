@@ -16,8 +16,92 @@ const _exploreState = {
     selectedCats: [],      // 选中的中类 ID 列表（支持多选）
     allJobs: [],           // 当前筛选后的职业列表
     filteredJobs: [],      // 虚拟滚动：排序后的筛选结果
-    searchKeyword: ''      // 搜索关键词
+    searchKeyword: '',     // 搜索关键词
+    salaryRange: [],       // 选中的薪资范围列表
+    salaryPanelOpen: false // 薪资筛选面板是否展开
 };
+
+// 薪资数据缓存
+let _salaryData = null;
+
+// 薪资范围选项定义
+const SALARY_RANGES = [
+    { id: 'below_3k',    label: '3000以下',     min: 0,      max: 3000 },
+    { id: '3k_5k',       label: '3000-5000',     min: 3000,   max: 5000 },
+    { id: '5k_8k',       label: '5000-8000',     min: 5000,   max: 8000 },
+    { id: '8k_12k',      label: '8000-12000',    min: 8000,   max: 12000 },
+    { id: '12k_20k',     label: '12000-20000',   min: 12000,  max: 20000 },
+    { id: '20k_50k',     label: '20000-50000',   min: 20000,  max: 50000 },
+    { id: 'above_50k',   label: '50000以上',     min: 50000,  max: Infinity }
+];
+
+/**
+ * 异步加载薪资数据（不阻塞页面渲染）
+ */
+function loadSalaryData() {
+    if (_salaryData) return Promise.resolve(_salaryData);
+
+    return fetch('js/data/job_salary.json')
+        .then(function(r) { return r.ok ? r.json() : null; })
+        .catch(function() { return null; })
+        .then(function(data) {
+            if (data && data.jobs) {
+                _salaryData = data.jobs;
+                console.log('[薪资] 薪资数据加载完成');
+            }
+            return _salaryData;
+        });
+}
+
+/**
+ * 获取职业的薪资信息
+ * @param {string} jobId
+ * @returns {Object|null}
+ */
+function getJobSalary(jobId) {
+    if (!_salaryData) return null;
+    return _salaryData[jobId] || null;
+}
+
+/**
+ * 格式化薪资显示（如 "5K-8K/月"）
+ * @param {Object} salaryData
+ * @returns {string}
+ */
+function formatSalaryLabel(salaryData) {
+    if (!salaryData) return '';
+    var min = salaryData.min || 0;
+    var max = salaryData.max || 0;
+    var unit = salaryData.unit || 'month';
+
+    function formatNum(n) {
+        if (n >= 10000) {
+            return (n / 10000).toFixed(n % 10000 === 0 ? 0 : 1) + 'W';
+        }
+        return (n / 1000).toFixed(n % 1000 === 0 ? 0 : 1) + 'K';
+    }
+
+    return formatNum(min) + '-' + formatNum(max) + '/' + (unit === 'month' ? '月' : '年');
+}
+
+/**
+ * 判断职业薪资是否匹配选中的范围
+ * @param {string} jobId
+ * @returns {boolean}
+ */
+function isSalaryMatch(jobId) {
+    if (_exploreState.salaryRange.length === 0) return true;
+    var salary = getJobSalary(jobId);
+    if (!salary) return false;
+
+    var jobAvg = (salary.min + salary.max) / 2;
+
+    return _exploreState.salaryRange.some(function(rangeId) {
+        var range = SALARY_RANGES.find(function(r) { return r.id === rangeId; });
+        if (!range) return false;
+        return jobAvg >= range.min && jobAvg < range.max;
+    });
+}
 
 /**
  * 初始化职业探索页
@@ -44,6 +128,14 @@ export function initExplore() {
     // 获取所有职业
     _exploreState.allJobs = getAllJobs();
 
+    // 异步加载薪资数据（不阻塞页面渲染）
+    loadSalaryData().then(function() {
+        // 薪资数据加载完成后，如果有薪资筛选条件，刷新列表
+        if (_exploreState.salaryRange.length > 0) {
+            refreshJobList();
+        }
+    });
+
     renderExplore(container);
 }
 
@@ -68,6 +160,9 @@ function renderExplore(container) {
     // 0. 搜索栏
     const searchSection = createSearchBar();
 
+    // 0.5 薪资筛选
+    const salarySection = createSalaryFilter();
+
     // 1. 分类 Tab
     const tabsSection = createCategoryTabs();
 
@@ -78,6 +173,7 @@ function renderExplore(container) {
     const listSection = createJobList();
 
     container.appendChild(searchSection);
+    container.appendChild(salarySection);
     container.appendChild(tabsSection);
     container.appendChild(chipsSection);
     container.appendChild(listSection);
@@ -133,6 +229,90 @@ function createSearchBar() {
         _exploreState.searchKeyword = '';
         clearBtn.classList.remove('visible');
         refreshJobList();
+    });
+
+    return wrap;
+}
+
+// ==================== 薪资筛选 ====================
+
+function createSalaryFilter() {
+    const wrap = createEl('div', 'salary-filter-wrap mb-3');
+
+    // 筛选按钮行
+    const btnRow = createEl('div', 'salary-filter-btn-row');
+
+    const filterBtn = createEl('button', 'salary-filter-btn');
+    filterBtn.appendChild(icon('coins', 16));
+    filterBtn.appendChild(document.createTextNode(' 薪资筛选'));
+
+    // 显示已选数量 badge
+    if (_exploreState.salaryRange.length > 0) {
+        const badge = createEl('span', 'salary-filter-badge');
+        badge.textContent = _exploreState.salaryRange.length;
+        filterBtn.appendChild(badge);
+    }
+
+    // 展开/收起箭头
+    const arrow = createEl('span', 'salary-filter-arrow');
+    arrow.textContent = _exploreState.salaryPanelOpen ? '▾' : '▸';
+    filterBtn.appendChild(arrow);
+
+    // 清除筛选按钮
+    const clearBtn = createEl('button', 'salary-filter-clear');
+    clearBtn.textContent = '清除';
+    clearBtn.style.display = _exploreState.salaryRange.length > 0 ? '' : 'none';
+    clearBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        _exploreState.salaryRange = [];
+        refreshExplore();
+    });
+
+    btnRow.appendChild(filterBtn);
+    btnRow.appendChild(clearBtn);
+    wrap.appendChild(btnRow);
+
+    // 筛选面板
+    const panel = createEl('div', 'salary-filter-panel' + (_exploreState.salaryPanelOpen ? ' open' : ''));
+
+    SALARY_RANGES.forEach(function(range) {
+        const isChecked = _exploreState.salaryRange.indexOf(range.id) !== -1;
+
+        const item = createEl('label', 'salary-filter-item');
+
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.className = 'salary-filter-checkbox';
+        checkbox.checked = isChecked;
+        checkbox.setAttribute('data-range-id', range.id);
+
+        const label = createEl('span', 'salary-filter-label');
+        label.textContent = range.label;
+
+        item.appendChild(checkbox);
+        item.appendChild(label);
+
+        checkbox.addEventListener('change', function() {
+            const idx = _exploreState.salaryRange.indexOf(range.id);
+            if (checkbox.checked) {
+                if (idx === -1) _exploreState.salaryRange.push(range.id);
+            } else {
+                if (idx !== -1) _exploreState.salaryRange.splice(idx, 1);
+            }
+            // 只刷新列表，不刷新整个页面
+            refreshJobList();
+        });
+
+        panel.appendChild(item);
+    });
+
+    wrap.appendChild(panel);
+
+    // 点击按钮展开/收起面板
+    filterBtn.addEventListener('click', function() {
+        _exploreState.salaryPanelOpen = !_exploreState.salaryPanelOpen;
+        panel.classList.toggle('open');
+        arrow.textContent = _exploreState.salaryPanelOpen ? '▾' : '▸';
     });
 
     return wrap;
@@ -298,9 +478,19 @@ function filterExploreJobs() {
         }
 
         // 分类过滤
-        if (_exploreState.selectedCats.length === 0) return true;
-        const catMap = window.JOB_CATEGORY_MAP || {};
-        return _exploreState.selectedCats.indexOf(catMap[job.id]) !== -1;
+        if (_exploreState.selectedCats.length === 0) {
+            // 没有选中分类时，不做分类过滤
+        } else {
+            const catMap = window.JOB_CATEGORY_MAP || {};
+            if (_exploreState.selectedCats.indexOf(catMap[job.id]) === -1) return false;
+        }
+
+        // 薪资过滤
+        if (_exploreState.salaryRange.length > 0) {
+            if (!isSalaryMatch(job.id)) return false;
+        }
+
+        return true;
     });
 }
 
@@ -357,16 +547,22 @@ function createJobCard(job, index) {
     info.appendChild(name);
     info.appendChild(desc);
 
-    // 薪资：只显示简短范围
+    // 薪资标签：优先使用结构化薪资数据，回退到文本提取
     let salary = '';
-    if (job.overview && job.overview.salary) {
+    let salaryFromStructured = false;
+
+    // 优先从结构化薪资数据获取
+    var salaryInfo = getJobSalary(job.id);
+    if (salaryInfo) {
+        salary = formatSalaryLabel(salaryInfo);
+        salaryFromStructured = true;
+    } else if (job.overview && job.overview.salary) {
+        // 回退：从文本中提取
         const rawSalary = job.overview.salary;
-        // 提取第一个薪资范围（如 "4000-7000元/月" 或 "1.5-3万/年"）
         const match = rawSalary.match(/[\d.]+-[\d.]+\s*[万亿]?\s*元?\/?\s*[月年]/);
         if (match) {
             salary = match[0];
         } else {
-            // 备用：取第一行
             const firstLine = rawSalary.split('\n')[0];
             salary = firstLine.length > 15 ? firstLine.substring(0, 14) + '…' : firstLine;
         }
@@ -378,6 +574,9 @@ function createJobCard(job, index) {
     if (salary) {
         const salaryEl = createEl('div', 'job-salary');
         salaryEl.textContent = salary;
+        if (salaryFromStructured) {
+            salaryEl.classList.add('job-salary-structured');
+        }
         card.appendChild(salaryEl);
     }
 
