@@ -1,0 +1,45 @@
+{
+  "version": "1.0",
+  "notifications": [
+    {
+      "id": "n001",
+      "type": "update",
+      "title": "百事通 v1.0 正式上线",
+      "content": "涵盖1670个职业、2000条生活常识、120题职业测评，快来探索吧！",
+      "date": "2026-04-25",
+      "icon": "rocket"
+    },
+    {
+      "id": "n002",
+      "type": "feature",
+      "title": "生活常识扩充至2000条",
+      "content": "新增烹饪、收纳、养生、数码等10大类实用常识。",
+      "date": "2026-04-30",
+      "icon": "lightbulb"
+    },
+    {
+      "id": "n003",
+      "type": "feature",
+      "title": "职业测评大升级",
+      "content": "霍兰德测评从10题扩充至120题，测评结果与职业库联动，推荐更精准。",
+      "date": "2026-04-30",
+      "icon": "award"
+    },
+    {
+      "id": "n004",
+      "type": "feature",
+      "title": "探索页新增搜索和薪资筛选",
+      "content": "支持按关键词搜索职业，按薪资范围筛选，快速找到心仪职业。",
+      "date": "2026-05-01",
+      "icon": "search"
+    },
+    {
+      "id": "n005",
+      "type": "reminder",
+      "title": "每日签到赢积分",
+      "content": "记得每天来百事通签到打卡，连续签到有额外奖励哦！",
+      "date": "2026-05-01",
+      "icon": "calendar"
+    }
+  ]
+}
