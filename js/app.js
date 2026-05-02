@@ -7,19 +7,27 @@ import { loadData } from './data-loader.js';
 import { navigateTo } from './router.js';
 import { initSound } from './utils/sound.js';
 
-// 导入所有页面模块（注册 init 函数到 window）
-import './pages/home.js';
-import './pages/explore.js';
-import './pages/tips.js';
-import './pages/compare.js';
-import './pages/ai-chat.js';
-import './pages/profile.js';
-import './pages/community.js';
-import './pages/achievements.js';
-import './pages/favorites.js';
-import './pages/checkin.js';
-import './pages/assessment.js';
-import './pages/onboarding.js';
+// 动态导入各页面（代码分割，按需加载）
+const pageImports = {
+    'page-home': () => import('./pages/home.js'),
+    'page-explore': () => import('./pages/explore.js'),
+    'page-tips': () => import('./pages/tips.js'),
+    'page-compare': () => import('./pages/compare.js'),
+    'page-ai': () => import('./pages/ai-chat.js'),
+    'page-profile': () => import('./pages/profile.js'),
+    'page-community': () => import('./pages/community.js'),
+    'page-achievements': () => import('./pages/achievements.js'),
+    'page-favorites': () => import('./pages/favorites.js'),
+    'page-checkin': () => import('./pages/checkin.js'),
+    'page-assessment': () => import('./pages/assessment.js'),
+    'page-onboarding': () => import('./pages/onboarding.js')
+};
+
+// 预加载首页
+pageImports['page-home']();
+
+// 暴露给路由使用
+window.pageImports = pageImports;
 
 /**
  * 应用初始化

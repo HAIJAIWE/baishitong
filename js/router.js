@@ -48,7 +48,7 @@ let pageInitialized = {};
  * 导航到指定页面
  * @param {string} pageId - 页面 ID（如 'page-home'）
  */
-export function navigateTo(pageId) {
+export async function navigateTo(pageId) {
     // 验证 pageId
     if (!pageId || typeof pageId !== 'string') return;
 
@@ -62,6 +62,15 @@ export function navigateTo(pageId) {
 
     // 导航时自动关闭模态框，防止页面内容叠加
     hideModal();
+
+    // 动态加载页面代码（如果还没加载）
+    if (window.pageImports && window.pageImports[pageId]) {
+        try {
+            await window.pageImports[pageId]();
+        } catch(e) {
+            console.warn('页面加载失败:', pageId, e);
+        }
+    }
 
     // 切换 .page 的 active class
     const allPages = document.querySelectorAll('.page');
