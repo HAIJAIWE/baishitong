@@ -158,9 +158,17 @@ self.addEventListener('fetch', function(event) {
 // ==================== 缓存策略实现 ====================
 
 /**
+ * 判断 URL 是否为可压缩的静态资源（js/css/json）
+ */
+function isCompressibleAsset(url) {
+    return /\.(js|css|json)(\?.*)?$/.test(url);
+}
+
+/**
  * Cache-First 策略
  * 优先从缓存读取，缓存未命中时从网络获取并缓存
  * 适用于：HTML、CSS、JS、字体等静态资源
+ * 对于 .js/.css/.json 文件，优先尝试加载 .gz 压缩版本
  */
 function cacheFirst(request) {
     return caches.match(request).then(function(cached) {
@@ -168,26 +176,57 @@ function cacheFirst(request) {
             return cached;
         }
 
-        return fetch(request).then(function(response) {
-            if (!response || response.status !== 200) {
-                return response;
-            }
-
-            var clone = response.clone();
-            caches.open(CACHE_NAME).then(function(cache) {
-                cache.put(request, clone);
+        // 对于可压缩资源，优先尝试加载 .gz 版本
+        var url = request.url;
+        if (isCompressibleAsset(url) && !url.endsWith('.gz')) {
+            var gzUrl = url + '.gz';
+            var gzRequest = new Request(gzUrl, {
+                method: 'GET',
+                headers: { 'Accept-Encoding': 'gzip' }
             });
+            return fetch(gzRequest).then(function(response) {
+                if (response && response.status === 200) {
+                    // 缓存 .gz 版本
+                    var clone = response.clone();
+                    caches.open(CACHE_NAME).then(function(cache) {
+                        cache.put(request, clone);
+                    });
+                    return response;
+                }
+                // .gz 不存在，回退到原始请求
+                return fetchAndCache(request);
+            }).catch(function() {
+                return fetchAndCache(request);
+            });
+        }
 
+        return fetchAndCache(request);
+    });
+}
+
+/**
+ * 获取并缓存响应
+ */
+function fetchAndCache(request) {
+    return fetch(request).then(function(response) {
+        if (!response || response.status !== 200) {
             return response;
-        }).catch(function() {
-            // 离线且无缓存：导航请求返回离线页面
-            if (request.mode === 'navigate') {
-                return caches.match('./offline.html');
-            }
-            return new Response('离线不可用', {
-                status: 503,
-                statusText: 'Service Unavailable'
-            });
+        }
+
+        var clone = response.clone();
+        caches.open(CACHE_NAME).then(function(cache) {
+            cache.put(request, clone);
+        });
+
+        return response;
+    }).catch(function() {
+        // 离线且无缓存：导航请求返回离线页面
+        if (request.mode === 'navigate') {
+            return caches.match('./offline.html');
+        }
+        return new Response('离线不可用', {
+            status: 503,
+            statusText: 'Service Unavailable'
         });
     });
 }
