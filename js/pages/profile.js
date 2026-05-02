@@ -1257,9 +1257,15 @@ function showSupportModal() {
 
     // 感谢
     const tip = document.createElement('p');
-    tip.style.cssText = 'font-size:var(--text-xs);color:var(--text-tertiary);margin:0 0 var(--space-4);';
+    tip.style.cssText = 'font-size:var(--text-xs);color:var(--text-tertiary);margin:0 0 var(--space-3);';
     tip.textContent = '感谢每一位支持者的心意，百事通会持续更新 ❤️';
     wrap.appendChild(tip);
+
+    // QQ群
+    const qqTip = document.createElement('div');
+    qqTip.style.cssText = 'text-align:center;margin-bottom:var(--space-4);';
+    qqTip.innerHTML = '<span style="font-size:var(--text-xs);color:var(--text-tertiary);">有想法或Bug反馈？加QQ群 </span><span style="font-size:var(--text-sm);font-weight:var(--font-bold);color:var(--text-primary);cursor:pointer;user-select:all;" onclick="navigator.clipboard.writeText(\'932919784\')">932919784</span>';
+    wrap.appendChild(qqTip);
 
     // 关闭按钮
     const closeBtn = document.createElement('button');
