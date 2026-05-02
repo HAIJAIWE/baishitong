@@ -489,7 +489,7 @@ function createAnnouncement() {
     section.appendChild(icon);
 
     var text = createEl('div', 'announcement-text');
-    text.textContent = '🎉 已收录2000条生活常识、1669个职业、120题测评，持续优化中！';
+    text.textContent = '🎉 已收录2000条生活常识、1669个职业、120题测评，持续优化中！QQ交流群：932919784';
     section.appendChild(text);
 
     var closeBtn = createEl('span', 'announcement-close');
