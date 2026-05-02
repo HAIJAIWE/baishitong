@@ -492,6 +492,36 @@ function showAboutModal() {
     });
 
     panel.appendChild(features);
+
+    // QQ群和反馈
+    const contactSection = createEl('div', '');
+    contactSection.style.cssText = 'margin-top:var(--space-4);padding-top:var(--space-3);border-top:1px solid var(--border);text-align:center;';
+
+    const contactTitle = createEl('div', '');
+    contactTitle.style.cssText = 'font-size:var(--text-sm);color:var(--text-secondary);margin-bottom:var(--space-2);';
+    contactTitle.textContent = '💬 有想法或遇到Bug？加入用户群反馈';
+    contactSection.appendChild(contactTitle);
+
+    const qqGroup = createEl('div', '');
+    qqGroup.style.cssText = 'display:inline-flex;align-items:center;gap:var(--space-2);padding:var(--space-2) var(--space-4);background:var(--bg-tertiary);border:1px solid var(--border);border-radius:var(--radius-lg);cursor:pointer;user-select:all;';
+    qqGroup.innerHTML = '<span style="font-size:14px;">👥</span><span style="font-size:var(--text-sm);font-weight:var(--font-bold);color:var(--text-primary);letter-spacing:1px;">932919784</span>';
+    qqGroup.title = '点击复制群号';
+    qqGroup.addEventListener('click', function() {
+        navigator.clipboard.writeText('932919784').then(function() {
+            qqGroup.innerHTML = '<span style="font-size:14px;">✅</span><span style="font-size:var(--text-sm);color:var(--accent);">已复制群号</span>';
+            setTimeout(function() {
+                qqGroup.innerHTML = '<span style="font-size:14px;">👥</span><span style="font-size:var(--text-sm);font-weight:var(--font-bold);color:var(--text-primary);letter-spacing:1px;">932919784</span>';
+            }, 2000);
+        });
+    });
+    contactSection.appendChild(qqGroup);
+
+    const contactHint = createEl('div', '');
+    contactHint.style.cssText = 'font-size:var(--text-xs);color:var(--text-tertiary);margin-top:var(--space-1);';
+    contactHint.textContent = 'QQ搜索群号即可加入，欢迎提出建议和反馈问题';
+    contactSection.appendChild(contactHint);
+
+    panel.appendChild(contactSection);
 }
 
 /**
