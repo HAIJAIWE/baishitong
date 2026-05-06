@@ -474,7 +474,7 @@ function showAboutModal() {
     features.style.cssText = 'font-size:var(--text-sm);color:var(--text-secondary);line-height:2;';
 
     const featureItems = [
-        '涵盖 1669 个职业详细数据',
+        '涵盖 1587 个职业详细数据',
         '8大行业分类，82个中类',
         '7800+ 条精选生活常识（烹饪/收纳/养生/数码/宠物/育儿/运动/摄影/游戏等）',
         '120题霍兰德职业测评（每次随机30题）',

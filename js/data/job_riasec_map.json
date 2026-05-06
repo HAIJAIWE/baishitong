@@ -2,7 +2,7 @@
   "version": "1.0",
   "description": "职业-RIASEC类型映射表，基于霍兰德职业兴趣理论",
   "generatedAt": "2026-05-01",
-  "totalJobs": 1669,
+  "totalJobs": 1587,
   "mapping": {
     "urban_planner": {
       "primary": "E",

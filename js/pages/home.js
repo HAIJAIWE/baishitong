@@ -63,7 +63,7 @@ function createHeroSection() {
 
     // 副标题
     const subtitle = createEl('p', 'hero-subtitle');
-    subtitle.textContent = '探索 1669 个职业路径，掌握生活常识';
+    subtitle.textContent = '探索 1587 个职业路径，掌握生活常识';
     section.appendChild(subtitle);
 
     // 搜索栏
@@ -489,7 +489,7 @@ function createAnnouncement() {
     section.appendChild(icon);
 
     var text = createEl('div', 'announcement-text');
-    text.textContent = '🎉 已收录7800+条精选生活常识、1669个职业、120题测评，持续优化中！QQ交流群：932919784';
+    text.textContent = '🎉 已收录7800+条精选生活常识、1587个职业、120题测评，持续优化中！QQ交流群：932919784';
     section.appendChild(text);
 
     var closeBtn = createEl('span', 'announcement-close');

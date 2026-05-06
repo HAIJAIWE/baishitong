@@ -10,7 +10,7 @@ const STEPS = [
     {
         icon: '\uD83D\uDD0D',
         title: '探索职业',
-        desc: '涵盖1669+个职业，8大行业分类'
+        desc: '涵盖1587+个职业，8大行业分类'
     },
     {
         icon: '\uD83E\uDD16',
