@@ -46,6 +46,7 @@ function renderHome(container) {
     container.appendChild(createAnnouncement());
     container.appendChild(createCheckinReminder());
     container.appendChild(quickSection);
+    container.appendChild(createDailyTipSection());
     container.appendChild(recommendSection);
     container.appendChild(categorySection);
     container.appendChild(recentSection);
@@ -231,6 +232,92 @@ function createQuickActions() {
 
     section.appendChild(grid);
     return section;
+}
+
+// ==================== 每日一招 ====================
+
+function createDailyTipSection() {
+    var section = createEl('div', 'content-section');
+
+    var titleRow = createEl('div', 'section-header');
+    var h2 = createEl('h2', 'section-heading');
+    h2.appendChild(icon('lightbulb', 16));
+    h2.appendChild(document.createTextNode(' 每日一招'));
+    titleRow.appendChild(h2);
+
+    var subtitle = createEl('p', 'section-subheading');
+    subtitle.textContent = '每天学一条实用生活小技巧';
+    titleRow.appendChild(subtitle);
+    section.appendChild(titleRow);
+
+    var moreLink = createEl('div', 'more-link');
+    moreLink.textContent = '更多常识 ';
+    moreLink.appendChild(icon('arrowRight', 14, 'var(--accent)'));
+    moreLink.addEventListener('click', function() {
+        navigateTo('page-tips');
+    });
+    titleRow.appendChild(moreLink);
+
+    // 基于日期生成伪随机数，每天推荐一条
+    var today = new Date();
+    var seed = today.getFullYear() * 10000 + (today.getMonth() + 1) * 100 + today.getDate();
+    var tipIndex = seed % 7800;
+
+    // 异步加载
+    fetch('js/data/tips_cn.json')
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            var count = 0;
+            for (var i = 0; i < data.categories.length; i++) {
+                var cat = data.categories[i];
+                for (var j = 0; j < cat.subCategories.length; j++) {
+                    var sub = cat.subCategories[j];
+                    for (var k = 0; k < sub.tips.length; k++) {
+                        if (count === tipIndex) {
+                            renderDailyTip(section, sub.tips[k], cat);
+                            return;
+                        }
+                        count++;
+                    }
+                }
+            }
+        })
+        .catch(function() {});
+
+    return section;
+}
+
+function renderDailyTip(section, tip, cat) {
+    var card = createEl('div', 'rec-card');
+    card.style.cursor = 'pointer';
+
+    // 分类标签
+    var tag = createEl('span', 'rec-tag');
+    tag.textContent = cat.icon + ' ' + cat.name;
+    tag.style.color = '#10B981';
+    tag.style.background = 'rgba(16,185,129,0.12)';
+    card.appendChild(tag);
+
+    // 标题
+    var title = createEl('h3', 'rec-card-name');
+    title.textContent = tip.title || '';
+    card.appendChild(title);
+
+    // 内容预览
+    var preview = createEl('p', 'rec-card-desc');
+    preview.textContent = tip.content.length > 60 ? tip.content.substring(0, 60) + '...' : tip.content;
+    card.appendChild(preview);
+
+    // 底部箭头
+    var arrow = createEl('span', 'rec-card-arrow');
+    arrow.appendChild(icon('chevronRight', 16, '#10B981'));
+    card.appendChild(arrow);
+
+    card.addEventListener('click', function() {
+        navigateTo('page-tips');
+    });
+
+    section.appendChild(card);
 }
 
 // ==================== 热门推荐（卡片网格） ====================

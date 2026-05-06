@@ -15,6 +15,7 @@ const defaultState = {
     recentViewed: [],         // 最近浏览的职业 [{id, timestamp}]
     compareSlots: [],         // 对比槽位 [{id, name, icon}]
     exploredJobs: [],         // 已探索的职业ID（序列化为数组存储）
+    tipFavorites: [],         // 收藏的常识ID列表
     stats: {
         totalExplored: 0,
         totalStepsCompleted: 0,
@@ -240,6 +241,47 @@ export function getFavorites() {
 export function clearFavorites() {
     appState.favorites = [];
     saveState();
+}
+
+// ==================== 常识收藏管理 ====================
+
+/**
+ * 切换常识收藏状态
+ * @param {string} tipId - 常识 ID
+ * @returns {boolean} 切换后的收藏状态（true=已收藏）
+ */
+export function toggleTipFavorite(tipId) {
+    if (!tipId) return false;
+    if (!appState.tipFavorites) appState.tipFavorites = [];
+
+    var index = appState.tipFavorites.indexOf(tipId);
+    if (index === -1) {
+        appState.tipFavorites.push(tipId);
+        saveState();
+        checkAchievement('tip_favorite');
+        return true;
+    } else {
+        appState.tipFavorites.splice(index, 1);
+        saveState();
+        return false;
+    }
+}
+
+/**
+ * 检查常识是否已收藏
+ * @param {string} tipId - 常识 ID
+ * @returns {boolean}
+ */
+export function isTipFavorited(tipId) {
+    return appState.tipFavorites && appState.tipFavorites.indexOf(tipId) !== -1;
+}
+
+/**
+ * 获取所有收藏的常识 ID
+ * @returns {Array<string>}
+ */
+export function getTipFavorites() {
+    return (appState.tipFavorites || []).slice();
 }
 
 // ==================== 已探索职业 ====================
@@ -763,6 +805,15 @@ export function checkAchievement(id) {
         case 'tips_ten':
             shouldUnlock = (appState.stats && appState.stats.tipsViewed >= 10);
             break;
+        case 'tip_favorite':
+            shouldUnlock = (appState.tipFavorites && appState.tipFavorites.length >= 1);
+            break;
+        case 'tip_favorite_five':
+            shouldUnlock = (appState.tipFavorites && appState.tipFavorites.length >= 5);
+            break;
+        case 'tip_favorite_ten':
+            shouldUnlock = (appState.tipFavorites && appState.tipFavorites.length >= 10);
+            break;
         case 'first_search':
             shouldUnlock = (appState.stats && appState.stats.searches >= 1);
             break;
@@ -819,3 +870,6 @@ window.getUnlockedAchievements = getUnlockedAchievements;
 window.isAchievementUnlocked = isAchievementUnlocked;
 window.unlockAchievement = unlockAchievement;
 window.checkAchievement = checkAchievement;
+window.toggleTipFavorite = toggleTipFavorite;
+window.isTipFavorited = isTipFavorited;
+window.getTipFavorites = getTipFavorites;

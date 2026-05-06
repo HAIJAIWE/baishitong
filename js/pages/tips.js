@@ -4,6 +4,7 @@
 
 import { clearContainer, createEl, showModal, hideModal } from '../utils/ui.js';
 import { icon } from '../utils/icons.js';
+import { isTipFavorited, toggleTipFavorite } from '../state.js';
 
 let tipsData = null;
 let currentCategory = null;   // 当前大类 ID
@@ -437,6 +438,53 @@ function showTipDetail(tip) {
         }
         modal.appendChild(tagsWrap);
     }
+
+    // 操作按钮区
+    var actions = createEl('div', '');
+    actions.style.cssText = 'display:flex;gap:var(--space-2);margin-top:var(--space-4);';
+
+    // 收藏按钮
+    var favBtn = createEl('button', '');
+    var isFav = isTipFavorited(tip.id);
+    favBtn.style.cssText = 'flex:1;padding:var(--space-2) var(--space-3);border-radius:var(--radius-lg);border:1px solid var(--border);background:' + (isFav ? 'rgba(239,68,68,0.1)' : 'var(--bg-tertiary)') + ';color:var(--text-secondary);font-size:var(--text-sm);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:var(--space-1);';
+    favBtn.innerHTML = isFav ? '❤️ 已收藏' : '🤍 收藏';
+    favBtn.addEventListener('click', function() {
+        var added = toggleTipFavorite(tip.id);
+        this.innerHTML = added ? '❤️ 已收藏' : '🤍 收藏';
+        this.style.background = added ? 'rgba(239,68,68,0.1)' : 'var(--bg-tertiary)';
+    });
+    actions.appendChild(favBtn);
+
+    // 复制按钮
+    var copyBtn = createEl('button', '');
+    copyBtn.style.cssText = 'flex:1;padding:var(--space-2) var(--space-3);border-radius:var(--radius-lg);border:1px solid var(--border);background:var(--bg-tertiary);color:var(--text-secondary);font-size:var(--text-sm);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:var(--space-1);';
+    copyBtn.textContent = '📋 复制';
+    copyBtn.addEventListener('click', function() {
+        var text = tip.title + '\n' + tip.content;
+        navigator.clipboard.writeText(text).then(function() {
+            copyBtn.textContent = '✅ 已复制';
+            setTimeout(function() { copyBtn.textContent = '📋 复制'; }, 2000);
+        });
+    });
+    actions.appendChild(copyBtn);
+
+    // 分享按钮
+    var shareBtn = createEl('button', '');
+    shareBtn.style.cssText = 'flex:1;padding:var(--space-2) var(--space-3);border-radius:var(--radius-lg);border:1px solid var(--border);background:var(--bg-tertiary);color:var(--text-secondary);font-size:var(--text-sm);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:var(--space-1);';
+    shareBtn.textContent = '🔗 分享';
+    shareBtn.addEventListener('click', function() {
+        if (navigator.share) {
+            navigator.share({ title: tip.title, text: tip.content });
+        } else {
+            navigator.clipboard.writeText(tip.title + '\n' + tip.content).then(function() {
+                shareBtn.textContent = '✅ 已复制链接';
+                setTimeout(function() { shareBtn.textContent = '🔗 分享'; }, 2000);
+            });
+        }
+    });
+    actions.appendChild(shareBtn);
+
+    modal.appendChild(actions);
 
     const closeBtn = createEl('button', 'btn btn-primary');
     closeBtn.style.cssText = 'width:100%;margin-top:var(--space-4);';
